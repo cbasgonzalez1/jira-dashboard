@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% set active_nav = "burndown" %}
+
+{% block title %}Burndown — Jira Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Sprint Burndown</h1>
+  <p>Ideal vs actual remaining story points</p>
+</div>
+
+<div class="project-selector">
+  {% for key in project_keys %}
+  <a href="/dashboard/burndown?project={{ key }}"
+     class="proj-btn {% if selected == key %}active{% endif %}">{{ key }}</a>
+  {% endfor %}
+</div>
+
+{% if sprint %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Sprint</div>
+    <div style="font-size:16px;font-weight:600;">{{ sprint }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Points</div>
+    <div class="kpi-value accent">{{ total_pts }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Done</div>
+    <div class="kpi-value green">{{ done_pts }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Remaining</div>
+    <div class="kpi-value {% if remaining_pts > total_pts * 0.5 %}red{% elif remaining_pts > total_pts * 0.2 %}yellow{% else %}green{% endif %}">
+      {{ remaining_pts }}
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Sprint End</div>
+    <div style="font-size:15px;font-weight:600;">{{ sprint_end }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Burndown Chart — {{ sprint }}</div>
+  <div class="chart-container-tall">
+    <canvas id="burndownChart"></canvas>
+  </div>
+</div>
+
+<script>
+const days = {{ days | tojson }};
+const ideal = {{ ideal | tojson }};
+const actual = {{ actual | tojson }};
+
+const ctx = document.getElementById('burndownChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: days,
+    datasets: [
+      {
+        label: 'Ideal',
+        data: ideal,
+        borderColor: 'rgba(88,166,255,0.6)',
+        borderDash: [6, 4],
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+      },
+      {
+        label: 'Actual',
+        data: actual,
+        borderColor: '#3fb950',
+        backgroundColor: 'rgba(63,185,80,0.1)',
+        borderWidth: 2,
+        pointRadius: 3,
+        fill: true,
+        tension: 0.3,
+        spanGaps: false,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#e6edf3' } },
+      tooltip: { mode: 'index', intersect: false },
+    },
+    scales: {
+      x: { ticks: { color: '#8b949e', maxTicksLimit: 10 }, grid: { color: '#30363d' } },
+      y: {
+        ticks: { color: '#8b949e' },
+        grid: { color: '#30363d' },
+        beginAtZero: true,
+        title: { display: true, text: 'Story Points Remaining', color: '#8b949e' },
+      },
+    },
+  },
+});
+</script>
+
+{% else %}
+<div class="card" style="text-align:center;padding:40px;color:var(--text-muted)">
+  No active sprint found for project <strong>{{ selected }}</strong>.
+  Run the seed script or check that an active sprint exists in Jira.
+</div>
+{% endif %}
+{% endblock %}

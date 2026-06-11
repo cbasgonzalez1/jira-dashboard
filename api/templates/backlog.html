@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% set active_nav = "backlog" %}
+
+{% block title %}Backlog — Jira Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Backlog Health</h1>
+  <p>Issues not in current sprint, by type, priority and status</p>
+</div>
+
+<div class="project-selector">
+  {% for key in project_keys %}
+  <a href="/dashboard/backlog?project={{ key }}"
+     class="proj-btn {% if selected == key %}active{% endif %}">{{ key }}</a>
+  {% endfor %}
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Total Backlog</div>
+    <div class="kpi-value accent">{{ total }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Unestimated</div>
+    <div class="kpi-value {% if unestimated > total * 0.3 %}red{% else %}yellow{% endif %}">{{ unestimated }}</div>
+  </div>
+</div>
+
+<div class="grid-3">
+  <!-- By type -->
+  <div class="card">
+    <div class="card-title">By Issue Type</div>
+    <div class="chart-container">
+      <canvas id="typeChart"></canvas>
+    </div>
+  </div>
+
+  <!-- By priority -->
+  <div class="card">
+    <div class="card-title">By Priority</div>
+    <div class="chart-container">
+      <canvas id="priorityChart"></canvas>
+    </div>
+  </div>
+
+  <!-- By status -->
+  <div class="card">
+    <div class="card-title">By Status</div>
+    <div class="chart-container">
+      <canvas id="statusChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Detail tables -->
+<div class="grid-3">
+  <div class="card">
+    <div class="card-title">Issue Types</div>
+    <table>
+      <thead><tr><th>Type</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for name, count in by_type.items() | sort(attribute=1, reverse=True) %}
+        <tr><td>{{ name }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">Priorities</div>
+    <table>
+      <thead><tr><th>Priority</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for name, count in by_priority.items() | sort(attribute=1, reverse=True) %}
+        <tr>
+          <td>
+            {% if name == 'Critical' %}<span class="badge badge-red">{{ name }}</span>
+            {% elif name == 'High' %}<span class="badge badge-yellow">{{ name }}</span>
+            {% elif name == 'Medium' %}<span class="badge badge-blue">{{ name }}</span>
+            {% else %}<span class="badge badge-purple">{{ name }}</span>
+            {% endif %}
+          </td>
+          <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">Statuses</div>
+    <table>
+      <thead><tr><th>Status</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for name, count in by_status.items() | sort(attribute=1, reverse=True) %}
+        <tr>
+          <td>
+            {% if name == 'Done' %}<span class="badge badge-green">{{ name }}</span>
+            {% elif name == 'In Progress' %}<span class="badge badge-blue">{{ name }}</span>
+            {% elif name == 'Blocked' %}<span class="badge badge-red">{{ name }}</span>
+            {% else %}<span class="badge badge-purple">{{ name }}</span>
+            {% endif %}
+          </td>
+          <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function makeDonut(id, labels, data, colors) {
+  const ctx = document.getElementById(id).getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderColor: '#161b22', borderWidth: 2 }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#8b949e', font: { size: 11 } } },
+      },
+    },
+  });
+}
+
+makeDonut('typeChart',
+  {{ by_type.keys() | list | tojson }},
+  {{ by_type.values() | list | tojson }},
+  ['#58a6ff','#f85149','#3fb950','#d29922','#bc8cff','#e3693a']
+);
+
+makeDonut('priorityChart',
+  {{ by_priority.keys() | list | tojson }},
+  {{ by_priority.values() | list | tojson }},
+  ['#f85149','#d29922','#58a6ff','#3fb950']
+);
+
+makeDonut('statusChart',
+  {{ by_status.keys() | list | tojson }},
+  {{ by_status.values() | list | tojson }},
+  ['#3fb950','#58a6ff','#d29922','#f85149','#bc8cff']
+);
+</script>
+{% endblock %}

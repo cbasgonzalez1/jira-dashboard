@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% set active_nav = "overview" %}
+
+{% block title %}Overview — Jira Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Project Overview</h1>
+  <p>KPIs across all active projects</p>
+</div>
+
+<!-- Global KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Open Issues</div>
+    <div class="kpi-value accent">{{ total_open }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Critical Bugs</div>
+    <div class="kpi-value red">{{ total_critical_bugs }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Unassigned</div>
+    <div class="kpi-value yellow">{{ total_unassigned }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Epics In Progress</div>
+    <div class="kpi-value purple">{{ total_epics_in_progress }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Active Projects</div>
+    <div class="kpi-value green">{{ active_projects }}</div>
+  </div>
+</div>
+
+<!-- Per-project breakdown -->
+<div class="grid-3">
+  {% for proj in projects %}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--accent)">{{ proj.key }}</div>
+        <div style="font-size:12px;color:var(--text-muted)">{{ proj.name }}</div>
+      </div>
+      <span class="badge badge-blue">{{ proj.open_issues }} open</span>
+    </div>
+
+    <!-- Sprint progress -->
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:12px;color:var(--text-muted)">Sprint Progress</span>
+        <span style="font-size:12px;">{{ proj.sprint_done }}/{{ proj.sprint_total }}</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill {% if proj.sprint_pct >= 70 %}{% elif proj.sprint_pct >= 40 %}yellow{% else %}red{% endif %}"
+             style="width: {{ proj.sprint_pct }}%"></div>
+      </div>
+      <div class="sprint-pct">{{ proj.sprint_pct }}% complete</div>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted)">Critical Bugs</div>
+        <div style="font-size:16px;font-weight:600;color:var(--red)">{{ proj.critical_bugs }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text-muted)">Unassigned</div>
+        <div style="font-size:16px;font-weight:600;color:var(--yellow)">{{ proj.unassigned }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text-muted)">Epics Active</div>
+        <div style="font-size:16px;font-weight:600;color:var(--purple)">{{ proj.epics_in_progress }}</div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:8px;">
+      <a href="/dashboard/velocity?project={{ proj.key }}" class="proj-btn" style="font-size:12px;">Velocity</a>
+      <a href="/dashboard/burndown?project={{ proj.key }}" class="proj-btn" style="font-size:12px;">Burndown</a>
+      <a href="/dashboard/team?project={{ proj.key }}" class="proj-btn" style="font-size:12px;">Team</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
+    No project data available. Make sure Jira is running and seed data has been loaded.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

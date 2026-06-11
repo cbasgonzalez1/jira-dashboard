@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% set active_nav = "team" %}
+
+{% block title %}Team Load — Jira Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Team Workload</h1>
+  <p>Open issue distribution and story points per team member</p>
+</div>
+
+<div class="project-selector">
+  {% for key in project_keys %}
+  <a href="/dashboard/team?project={{ key }}"
+     class="proj-btn {% if selected == key %}active{% endif %}">{{ key }}</a>
+  {% endfor %}
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Total Open Issues</div>
+    <div class="kpi-value accent">{{ total_issues }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Team Members</div>
+    <div class="kpi-value green">{{ users | length }}</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Issues per person chart -->
+  <div class="card">
+    <div class="card-title">Issues per Person</div>
+    <div class="chart-container-tall">
+      <canvas id="issuesChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Story points per person -->
+  <div class="card">
+    <div class="card-title">Story Points per Person</div>
+    <div class="chart-container-tall">
+      <canvas id="spChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Detail table -->
+<div class="card">
+  <div class="card-title">Team Detail — {{ selected }}</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Person</th>
+        <th>Open Issues</th>
+        <th>Story Points</th>
+        <th>Blocked</th>
+        <th>Issue Types</th>
+        <th>Load</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set max_issues = users[0][1].issues if users else 1 %}
+      {% for username, info in users %}
+      <tr>
+        <td>
+          <strong>{{ info.display }}</strong>
+          {% if username != '_unassigned' %}
+          <div style="font-size:11px;color:var(--text-muted)">{{ username }}</div>
+          {% endif %}
+        </td>
+        <td>{{ info.issues }}</td>
+        <td>{{ info.story_points }}</td>
+        <td>
+          {% if info.blocked > 0 %}
+          <span class="badge badge-red">{{ info.blocked }}</span>
+          {% else %}
+          <span style="color:var(--text-muted)">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% for itype, cnt in info.by_type.items() %}
+          <span class="badge badge-blue" style="margin-right:3px;">{{ itype }} ({{ cnt }})</span>
+          {% endfor %}
+        </td>
+        <td style="width:150px;">
+          {% set pct = (info.issues / [max_issues, 1]|max * 100) | int %}
+          <div class="progress-bar">
+            <div class="progress-fill {% if pct > 80 %}red{% elif pct > 50 %}yellow{% endif %}"
+                 style="width:{{ pct }}%"></div>
+          </div>
+          <div class="sprint-pct">{{ info.issues }} issues</div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const users = {{ users | tojson }};
+const labels = users.map(u => u[1].display);
+const issues = users.map(u => u[1].issues);
+const spoints = users.map(u => u[1].story_points);
+
+function makeBar(id, labels, data, color, label) {
+  const ctx = document.getElementById(id).getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        backgroundColor: color,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' }, beginAtZero: true },
+        y: { ticks: { color: '#e6edf3' }, grid: { color: '#30363d' } },
+      },
+    },
+  });
+}
+
+makeBar('issuesChart', labels, issues, 'rgba(88,166,255,0.7)', 'Open Issues');
+makeBar('spChart', labels, spoints, 'rgba(63,185,80,0.7)', 'Story Points');
+</script>
+{% endblock %}

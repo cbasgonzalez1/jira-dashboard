@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% set active_nav = "velocity" %}
+
+{% block title %}Velocity — Jira Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Team Velocity</h1>
+  <p>Story points committed vs completed per sprint</p>
+</div>
+
+<!-- Project selector -->
+<div class="project-selector">
+  {% for key in project_keys %}
+  <a href="/dashboard/velocity?project={{ key }}"
+     class="proj-btn {% if selected == key %}active{% endif %}">{{ key }}</a>
+  {% endfor %}
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid" style="margin-bottom:24px;">
+  <div class="kpi-card">
+    <div class="kpi-label">Avg Velocity</div>
+    <div class="kpi-value green">{{ avg_velocity }} pts</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Sprints Shown</div>
+    <div class="kpi-value accent">{{ sprints | length }}</div>
+  </div>
+  {% if sprints %}
+  <div class="kpi-card">
+    <div class="kpi-label">Last Sprint Completed</div>
+    <div class="kpi-value purple">
+      {{ sprints[-1].completed if sprints[-1].state == 'closed' else sprints[-1].completed }} pts
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Sprint Velocity — {{ selected }}</div>
+  <div class="chart-container-tall">
+    <canvas id="velocityChart"></canvas>
+  </div>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <div class="card-title">Sprint Details</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Sprint</th>
+        <th>State</th>
+        <th>Committed</th>
+        <th>Completed</th>
+        <th>Completion %</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sprints %}
+      <tr>
+        <td>{{ s.name }}</td>
+        <td>
+          {% if s.state == 'closed' %}
+            <span class="badge badge-green">Closed</span>
+          {% else %}
+            <span class="badge badge-blue">Active</span>
+          {% endif %}
+        </td>
+        <td>{{ s.committed }}</td>
+        <td>{{ s.completed }}</td>
+        <td>
+          {% set pct = (s.completed / [s.committed, 1]|max * 100) | int %}
+          <div class="progress-bar" style="width:100px;display:inline-block;vertical-align:middle;margin-right:8px;">
+            <div class="progress-fill {% if pct < 50 %}red{% elif pct < 80 %}yellow{% endif %}"
+                 style="width:{{ [pct, 100]|min }}%"></div>
+          </div>
+          {{ pct }}%
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const sprints = {{ sprints | tojson }};
+const labels = sprints.map(s => s.name);
+const committed = sprints.map(s => s.committed);
+const completed = sprints.map(s => s.completed);
+
+const ctx = document.getElementById('velocityChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'Committed',
+        data: committed,
+        backgroundColor: 'rgba(88,166,255,0.25)',
+        borderColor: 'rgba(88,166,255,0.8)',
+        borderWidth: 2,
+        borderRadius: 4,
+      },
+      {
+        label: 'Completed',
+        data: completed,
+        backgroundColor: 'rgba(63,185,80,0.35)',
+        borderColor: 'rgba(63,185,80,0.8)',
+        borderWidth: 2,
+        borderRadius: 4,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#e6edf3' } },
+      tooltip: { mode: 'index', intersect: false },
+    },
+    scales: {
+      x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+      y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' }, beginAtZero: true },
+    },
+  },
+});
+</script>
+{% endblock %}
