@@ -35,7 +35,7 @@ def get_overview_data() -> dict:
         )
         sprint_done = [
             i for i in sprint_issues
-            if i["fields"]["status"]["name"] == "Done"
+            if (i["fields"].get("status") or {}).get("name") == "Done"
         ]
         critical_bugs = client.search_issues(
             f'project = {key} AND issuetype = Bug AND priority = Highest AND resolution = Unresolved',

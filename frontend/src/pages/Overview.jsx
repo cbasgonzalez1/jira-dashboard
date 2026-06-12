@@ -6,7 +6,7 @@ import { KPISkeleton, ErrorCard } from '../components/ui/LoadingSpinner.jsx'
 import { useProject } from '../App.jsx'
 import clsx from 'clsx'
 
-function ProjectCard({ proj, onNavigate }) {
+function ProjectCard({ proj }) {
   const pct = proj.sprint_pct || 0
   const barColor = pct >= 70 ? 'bg-accent-green' : pct >= 40 ? 'bg-accent-yellow' : 'bg-accent-red'
 

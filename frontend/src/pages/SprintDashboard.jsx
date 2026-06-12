@@ -34,6 +34,33 @@ const tooltipStyle = {
   itemStyle: { color: '#94a3b8' },
 }
 
+// ── Demo / preview data shown before any sprint is selected ───────────────────
+const DEMO_DATA = {
+  kpis: {
+    days_remaining: 5, days_elapsed: 9, days_total: 14,
+    work_remaining_h: 48, work_remaining_pct: 35,
+    capacity_remaining_h: 120, team_size: 3,
+    deviation_pct: 12, achievable: true, achievable_delta_h: 72,
+    overcost_h: 4, velocity_today_sp: 3.2, done_sp: 28,
+    time_logged_per_day_h: 5.5, remaining_per_person_h: 16,
+  },
+  sprint: { name: 'Sprint Ejemplo', state: 'active', start_date: '2026-06-02', end_date: '2026-06-16' },
+  by_person: [
+    { account_id: 'u1', name: 'Ana García',    todo: 8,  in_progress: 12, validation: 4, done: 20, todo_count: 2, in_progress_count: 3, validation_count: 1, done_count: 5, remaining_h: 20, velocity_today: 3.1, n_projects: 2 },
+    { account_id: 'u2', name: 'Carlos López',  todo: 4,  in_progress: 8,  validation: 0, done: 16, todo_count: 1, in_progress_count: 2, validation_count: 0, done_count: 4, remaining_h: 12, velocity_today: 2.5, n_projects: 1 },
+    { account_id: 'u3', name: 'Marta Ruiz',    todo: 0,  in_progress: 6,  validation: 2, done: 24, todo_count: 0, in_progress_count: 1, validation_count: 1, done_count: 6, remaining_h: 8,  velocity_today: 3.8, n_projects: 2 },
+  ],
+  by_project: [
+    { key: 'SCRUM', name: 'MDA Portal',        todo: 6, in_progress: 16, validation: 4, done: 36, todo_count: 1, in_progress_count: 3, validation_count: 1, done_count: 8, remaining_h: 26, deviation_pct: 12,  velocity_today: 3.1, mandatory_incomplete: 1, completion_pct: 60 },
+    { key: 'CRM',   name: 'CRM & Admissions',  todo: 4, in_progress: 8,  validation: 2, done: 24, todo_count: 1, in_progress_count: 2, validation_count: 1, done_count: 6, remaining_h: 14, deviation_pct: -5,  velocity_today: 2.5, mandatory_incomplete: 0, completion_pct: 75 },
+    { key: 'INF',   name: 'Infrastructure',    todo: 2, in_progress: 4,  validation: 0, done: 16, todo_count: 1, in_progress_count: 1, validation_count: 0, done_count: 4, remaining_h: 6,  deviation_pct: 0,   velocity_today: 2.0, mandatory_incomplete: 0, completion_pct: 73 },
+  ],
+  deviations: [
+    { key: 'SCRUM-42', summary: 'Implementar autenticación SSO', original_h: 8,  spent_h: 14, deviation_pct: 75 },
+    { key: 'CRM-18',   summary: 'Migración de datos legacy',     original_h: 16, spent_h: 22, deviation_pct: 38 },
+  ],
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 function Select({ label, value, onChange, disabled, children, minW = 'min-w-48' }) {
   return (
@@ -120,7 +147,7 @@ export default function SprintDashboard() {
   const [sprintId, setSprintId] = useState(null)
   const [projectFilter, setProjectFilter] = useState('all')
 
-  // ── Queries ────────────────────────────────────────────────────────────────
+  // ── Queries ────────────────────────────────────────────────────────────
   const boardsQ = useQuery({
     queryKey: ['sd-boards'],
     queryFn: () => getSprintBoards().then(r => r.data),
@@ -139,21 +166,27 @@ export default function SprintDashboard() {
     staleTime: 60_000,
   })
 
-  // ── Derived data ───────────────────────────────────────────────────────────
+  // ── Derived data ───────────────────────────────────────────────────────
   const data = dataQ.data
-  const kpis = data?.kpis ?? {}
-  const sprint = data?.sprint ?? {}
 
-  const allByPerson = (data?.by_person ?? []).filter(p => p.account_id !== '_unassigned')
-  const allByProject = data?.by_project ?? []
-  const deviations = data?.deviations ?? []
+  // When no sprint is selected yet, fall back to demo data so the UI is populated
+  const isDemo = !data && !dataQ.isFetching && !dataQ.isError
+  const displayData = data ?? (isDemo ? DEMO_DATA : null)
 
+  const kpis = displayData?.kpis ?? {}
+  const sprint = displayData?.sprint ?? {}
+
+  const allByPerson = (displayData?.by_person ?? []).filter(p => p.account_id !== '_unassigned')
+  const allByProject = displayData?.by_project ?? []
+  const deviations = displayData?.deviations ?? []
+
+  // Project keys for the selector — populated from real or demo data
   const projects = allByProject.map(p => p.key)
   const byProject = projectFilter === 'all'
     ? allByProject
     : allByProject.filter(p => p.key === projectFilter)
 
-  // ── Chart data ─────────────────────────────────────────────────────────────
+  // ── Chart data ─────────────────────────────────────────────────────────
   const personChartData = allByPerson.map(p => ({
     name: p.name.split(' ')[0],
     fullName: p.name,
@@ -176,13 +209,13 @@ export default function SprintDashboard() {
     pct: p.completion_pct,
   }))
 
-  // ── KPI helpers ────────────────────────────────────────────────────────────
+  // ── KPI helpers ────────────────────────────────────────────────────────
   const devColor = Math.abs(kpis.deviation_pct) < 10 ? 'green'
     : kpis.deviation_pct > 0 ? 'red' : 'yellow'
 
   const sprintBarH = Math.max(allByPerson.length * 48, 180)
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-8 animate-fade-in">
 
@@ -256,14 +289,6 @@ export default function SprintDashboard() {
         </div>
       </section>
 
-      {/* Placeholder when nothing selected */}
-      {!sprintId && !dataQ.isFetching && (
-        <div className="card border border-border flex flex-col items-center justify-center py-16 gap-3 text-text-muted">
-          <BarChart2 size={32} className="opacity-30" />
-          <p className="text-sm">Selecciona un board y sprint para ver el dashboard</p>
-        </div>
-      )}
-
       {/* Loading */}
       {dataQ.isFetching && (
         <div className="space-y-4">
@@ -277,8 +302,16 @@ export default function SprintDashboard() {
         <ErrorCard message="Error cargando datos del sprint." onRetry={dataQ.refetch} />
       )}
 
-      {data && !dataQ.isFetching && (
+      {displayData && !dataQ.isFetching && (
         <>
+          {/* Demo banner */}
+          {isDemo && (
+            <div className="rounded-lg border border-accent-yellow/30 bg-accent-yellow/5 flex items-center gap-3 px-4 py-3 text-xs text-accent-yellow">
+              <AlertTriangle size={14} className="flex-shrink-0" />
+              <span>Vista previa con datos de ejemplo — selecciona un board y sprint para ver datos reales</span>
+            </div>
+          )}
+
           {/* ── SECTION 2: KPIs ────────────────────────────────────────────── */}
           <section>
             <SectionTitle>Métricas del sprint</SectionTitle>

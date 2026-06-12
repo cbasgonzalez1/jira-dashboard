@@ -5,7 +5,6 @@ import { useProject } from '../App.jsx'
 import DonutChart from '../components/charts/DonutChart.jsx'
 import KPICard from '../components/ui/KPICard.jsx'
 import { KPISkeleton, ErrorCard } from '../components/ui/LoadingSpinner.jsx'
-import { PriorityBadge, StatusBadge, TypeBadge } from '../components/ui/StatusBadge.jsx'
 import clsx from 'clsx'
 
 function StatsTable({ title, data = {}, colorFn }) {

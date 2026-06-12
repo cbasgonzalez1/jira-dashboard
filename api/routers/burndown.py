@@ -51,7 +51,7 @@ def get_burndown_data(project_key: str) -> dict:
     done_pts = sum(
         i["fields"].get(sp_field) or 0
         for i in issues
-        if i["fields"]["status"]["name"] == "Done"
+        if (i["fields"].get("status") or {}).get("name") == "Done"
     )
     today = datetime.now(timezone.utc)
     elapsed = max((today - start).days, 0)

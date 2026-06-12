@@ -29,7 +29,7 @@ def get_velocity_data(project_key: str) -> dict:
         completed = sum(
             i["fields"].get(sp_field) or 0
             for i in issues
-            if i["fields"]["status"]["name"] == "Done"
+            if (i["fields"].get("status") or {}).get("name") == "Done"
         )
         sprint_data.append({
             "name": sprint["name"],
@@ -44,7 +44,7 @@ def get_velocity_data(project_key: str) -> dict:
         completed = sum(
             i["fields"].get(sp_field) or 0
             for i in issues
-            if i["fields"]["status"]["name"] == "Done"
+            if (i["fields"].get("status") or {}).get("name") == "Done"
         )
         sprint_data.append({
             "name": sprint["name"],

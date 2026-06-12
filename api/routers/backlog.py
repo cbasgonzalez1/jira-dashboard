@@ -26,9 +26,9 @@ def get_backlog_data(project_key: str) -> dict:
 
     for i in issues:
         f = i["fields"]
-        by_type[f["issuetype"]["name"]] += 1
-        by_priority[f.get("priority", {}).get("name", "None")] += 1
-        by_status[f["status"]["name"]] += 1
+        by_type[(f.get("issuetype") or {}).get("name", "Unknown")] += 1
+        by_priority[(f.get("priority") or {}).get("name", "None")] += 1
+        by_status[(f.get("status") or {}).get("name", "Unknown")] += 1
         pts = f.get(sp_field)
         if not pts:
             unestimated += 1

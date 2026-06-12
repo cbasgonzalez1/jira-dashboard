@@ -3,8 +3,6 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from collections import defaultdict
 from jira_client import JiraClient
-from seed.users import USERS
-
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 client = JiraClient()
@@ -42,8 +40,8 @@ def get_team_data(project_key: str) -> dict:
         u["display"] = display
         u["issues"] += 1
         u["story_points"] += f.get(sp_field) or 0
-        u["by_type"][f["issuetype"]["name"]] += 1
-        if f["status"]["name"] == "Blocked":
+        u["by_type"][(f.get("issuetype") or {}).get("name", "Unknown")] += 1
+        if (f.get("status") or {}).get("name") == "Blocked":
             u["blocked"] += 1
 
     # Serialize defaultdicts

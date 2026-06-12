@@ -37,10 +37,3 @@ export function ErrorCard({ message, onRetry }) {
   )
 }
 
-export default function LoadingSpinner() {
-  return (
-    <div className="flex items-center justify-center h-40">
-      <div className="w-6 h-6 border-2 border-accent-blue border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-}
