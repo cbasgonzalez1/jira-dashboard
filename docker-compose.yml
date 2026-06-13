@@ -8,6 +8,10 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - JIRA_BASE_URL=https://jira.aes.alcatel.fr:8443
+      - JIRA_USER=GONZALD7
+      # JIRA_PASSWORD must be set in .env — never hardcode here
     volumes:
       - ./api:/app
     restart: unless-stopped

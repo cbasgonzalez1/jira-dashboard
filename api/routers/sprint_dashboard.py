@@ -5,16 +5,26 @@ from jira_client import JiraClient
 router = APIRouter(prefix="/api/sprint-dashboard")
 client = JiraClient()
 
+# ── Status map — English + Spanish ────────────────────────────────────────────
 _STATUS_MAP = {
+    # todo
     "to do": "todo", "backlog": "todo", "open": "todo",
-    "selected for development": "todo", "por hacer": "todo",
-    "in progress": "in_progress", "en progreso": "in_progress",
-    "blocked": "in_progress", "in development": "in_progress", "bloqueado": "in_progress",
-    "in review": "validation", "code review": "validation", "testing": "validation",
-    "validación": "validation", "in testing": "validation", "qa": "validation",
-    "review": "validation", "en revisión": "validation",
+    "selected for development": "todo",
+    "por hacer": "todo", "abierto": "todo",
+    # in_progress
+    "in progress": "in_progress", "in development": "in_progress",
+    "en curso": "in_progress", "en progreso": "in_progress",
+    # validation / review
+    "in review": "validation", "code review": "validation",
+    "testing": "validation", "qa": "validation",
+    "in testing": "validation", "review": "validation",
+    "validación": "validation", "en revisión": "validation",
+    # blocked (mapped to in_progress so it counts as work remaining)
+    "blocked": "in_progress", "bloqueado": "in_progress",
+    # done
     "done": "done", "closed": "done", "resolved": "done",
-    "cerrado": "done", "complete": "done", "completado": "done",
+    "complete": "done", "completado": "done",
+    "hecho": "done", "resuelto": "done", "cerrado": "done",
 }
 
 
@@ -35,22 +45,87 @@ def _parse_dt(s: str, fallback: datetime) -> datetime:
         return fallback
 
 
+def _sp(fields: dict) -> float:
+    """Extract story points: customfield_10002 primary, customfield_11934 fallback."""
+    return (
+        fields.get("customfield_10002")
+        or fields.get("customfield_11934")
+        or 0
+    )
+
+
+# ── Board helpers ──────────────────────────────────────────────────────────────
+
+def _fetch_boards() -> list[dict]:
+    """Fetch all scrum boards with project info. 403/401 boards silently skipped."""
+    raw_boards = client.get_all_boards(board_type="scrum")
+    result = []
+    for b in raw_boards:
+        loc = b.get("location") or {}
+        proj_key  = loc.get("projectKey", "")
+        proj_name = loc.get("projectName", "")
+
+        # Try board configuration for project info if missing
+        if not proj_key:
+            try:
+                cfg = client.get_board_configuration(b["id"])
+                cfg_loc = cfg.get("location") or {}
+                proj_key  = cfg_loc.get("projectKey", "")
+                proj_name = cfg_loc.get("projectName", "")
+            except Exception:
+                pass  # 403/401 or other error — skip project enrichment
+
+        result.append({
+            "id":           b["id"],
+            "name":         b["name"],
+            "type":         b.get("type", ""),
+            "project_key":  proj_key,
+            "project_name": proj_name,
+        })
+    return result
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
 @router.get("/boards")
 async def list_boards():
-    boards = client.get_all_boards()
-    return [{"id": b["id"], "name": b["name"], "type": b.get("type", "")} for b in boards]
+    return _fetch_boards()
+
+
+@router.get("/projects")
+async def list_projects():
+    """Unique projects derived from boards — no direct call to /api/2/project."""
+    boards = _fetch_boards()
+    seen: dict[str, str] = {}
+    for b in boards:
+        key = b["project_key"]
+        if key and key not in seen:
+            seen[key] = b["project_name"] or key
+    return sorted(
+        [{"key": k, "name": v} for k, v in seen.items()],
+        key=lambda x: x["name"],
+    )
 
 
 @router.get("/sprints/{board_id}")
 async def list_sprints(board_id: int):
-    sprints = client.get_sprints(board_id)
+    sprints = client.get_sprints(board_id, state="active,closed,future")
+
+    def sort_key(s: dict):
+        state = s.get("state", "")
+        order = {"active": 0, "future": 1, "closed": 2}.get(state, 3)
+        # Within closed: most recent (highest id) first
+        id_tie = -s["id"] if state == "closed" else s["id"]
+        return (order, id_tie)
+
+    sprints.sort(key=sort_key)
     return [
         {
-            "id": s["id"],
-            "name": s["name"],
-            "state": s["state"],
+            "id":         s["id"],
+            "name":       s["name"],
+            "state":      s["state"],
             "start_date": s.get("startDate", ""),
-            "end_date": s.get("endDate", ""),
+            "end_date":   s.get("endDate", ""),
         }
         for s in sprints
     ]
@@ -70,22 +145,21 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
         }
 
     start_dt = _parse_dt(sprint.get("startDate", ""), now)
-    end_dt = _parse_dt(sprint.get("endDate", ""), now)
+    end_dt   = _parse_dt(sprint.get("endDate", ""),   now)
 
-    days_total = max((end_dt - start_dt).days, 1)
-    days_elapsed = max(min((now - start_dt).days, days_total), 1)
+    days_total     = max((end_dt - start_dt).days, 1)
+    days_elapsed   = max(min((now - start_dt).days, days_total), 1)
     days_remaining = max((end_dt - now).days, 0)
 
-    # ── Fetch issues with time tracking ─────────────────────────────────────
-    sp_field = client.get_story_points_field()
+    # ── Issues ───────────────────────────────────────────────────────────────
     issues = client.get_sprint_issues_by_jql(sprint_id)
 
     # ── Aggregate ────────────────────────────────────────────────────────────
     total_original_s = 0
     total_remaining_s = 0
     total_spent_s = 0
-    done_sp = 0
-    total_sp = 0
+    done_sp = 0.0
+    total_sp = 0.0
     done_count = 0
     overcost_s = 0
 
@@ -94,54 +168,49 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
     deviations: list[dict] = []
 
     for issue in issues:
-        f = issue.get("fields", {})
+        f   = issue.get("fields", {})
         key = issue.get("key", "")
 
         status_name = (f.get("status") or {}).get("name", "")
         cat = _cat(status_name)
 
-        assignee = f.get("assignee") or {}
-        pid = assignee.get("accountId", "_unassigned")
-        pname = assignee.get("displayName", "Unassigned")
+        assignee  = f.get("assignee") or {}
+        pid       = assignee.get("name") or assignee.get("accountId") or "_unassigned"
+        pname     = assignee.get("displayName", "Unassigned")
 
-        proj = f.get("project") or {}
-        proj_key = proj.get("key", "UNKNOWN")
+        proj      = f.get("project") or {}
+        proj_key  = proj.get("key", "UNKNOWN")
         proj_name = proj.get("name", proj_key)
 
-        tt = f.get("timetracking") or {}
+        tt     = f.get("timetracking") or {}
         orig_s = tt.get("originalEstimateSeconds") or f.get("timeoriginalestimate") or 0
-        rem_s = tt.get("remainingEstimateSeconds") or 0
-        spent_s = tt.get("timeSpentSeconds") or f.get("timespent") or 0
+        rem_s  = tt.get("remainingEstimateSeconds") or 0
+        spent_s= tt.get("timeSpentSeconds") or f.get("timespent") or 0
 
-        sp = (
-            f.get(sp_field)
-            or f.get("customfield_10016")
-            or f.get("customfield_10028")
-            or 0
-        )
+        sp = _sp(f)
 
         # Sprint totals
         total_original_s += orig_s
-        total_sp += sp
-        total_spent_s += spent_s
+        total_sp         += sp
+        total_spent_s    += spent_s
 
         if cat == "done":
-            done_sp += sp
+            done_sp    += sp
             done_count += 1
             if orig_s > 0 and spent_s > orig_s:
                 overcost_s += spent_s - orig_s
         else:
             total_remaining_s += rem_s
 
-        # Deviation: issues where spent vs original > 10%
+        # Deviation per issue
         if orig_s > 0 and spent_s > 0:
             dev_pct = (spent_s - orig_s) / orig_s * 100
             if abs(dev_pct) > 10:
                 deviations.append({
-                    "key": key,
-                    "summary": f.get("summary", ""),
-                    "original_h": _h(orig_s),
-                    "spent_h": _h(spent_s),
+                    "key":          key,
+                    "summary":      f.get("summary", ""),
+                    "original_h":   _h(orig_s),
+                    "spent_h":      _h(spent_s),
                     "deviation_pct": round(dev_pct, 1),
                 })
 
@@ -150,17 +219,18 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
             by_person[pid] = {
                 "name": pname, "account_id": pid,
                 "todo": 0.0, "in_progress": 0.0, "validation": 0.0, "done": 0.0,
-                "todo_count": 0, "in_progress_count": 0, "validation_count": 0, "done_count": 0,
-                "remaining_s": 0, "done_sp": 0, "projects": set(),
+                "todo_count": 0, "in_progress_count": 0,
+                "validation_count": 0, "done_count": 0,
+                "remaining_s": 0, "done_sp": 0.0, "projects": set(),
             }
         pp = by_person[pid]
         pp["projects"].add(proj_key)
         pp[f"{cat}_count"] += 1
         if cat == "done":
-            pp["done"] += _h(spent_s)
+            pp["done"]    += _h(spent_s)
             pp["done_sp"] += sp
         else:
-            pp[cat] += _h(rem_s)
+            pp[cat]           += _h(rem_s)
             pp["remaining_s"] += rem_s
 
         # Per project
@@ -168,62 +238,64 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
             by_project[proj_key] = {
                 "key": proj_key, "name": proj_name,
                 "todo": 0.0, "in_progress": 0.0, "validation": 0.0, "done": 0.0,
-                "todo_count": 0, "in_progress_count": 0, "validation_count": 0, "done_count": 0,
+                "todo_count": 0, "in_progress_count": 0,
+                "validation_count": 0, "done_count": 0,
                 "remaining_s": 0, "done_original_s": 0, "done_spent_s": 0,
-                "done_sp": 0, "total_sp": 0, "high_prio_open": 0,
+                "done_sp": 0.0, "total_sp": 0.0, "high_prio_open": 0,
             }
         prj = by_project[proj_key]
-        prj["total_sp"] += sp
-        prj[f"{cat}_count"] += 1
+        prj["total_sp"]      += sp
+        prj[f"{cat}_count"]  += 1
         if cat == "done":
-            prj["done"] += _h(spent_s)
-            prj["done_sp"] += sp
-            prj["done_original_s"] += orig_s
-            prj["done_spent_s"] += spent_s
+            prj["done"]           += _h(spent_s)
+            prj["done_sp"]        += sp
+            prj["done_original_s"]+= orig_s
+            prj["done_spent_s"]   += spent_s
         else:
-            prj[cat] += _h(rem_s)
-            prj["remaining_s"] += rem_s
-            priority_name = (f.get("priority") or {}).get("name", "")
-            if priority_name in ("Highest", "High"):
+            prj[cat]          += _h(rem_s)
+            prj["remaining_s"]+= rem_s
+            prio_name = (f.get("priority") or {}).get("name", "")
+            if prio_name in ("Highest", "High", "Critical", "Blocker"):
                 prj["high_prio_open"] += 1
 
     # ── KPIs ─────────────────────────────────────────────────────────────────
-    total_original_h = _h(total_original_s)
-    work_remaining_h = _h(total_remaining_s)
+    total_original_h  = _h(total_original_s)
+    work_remaining_h  = _h(total_remaining_s)
     work_remaining_pct = (
         round(work_remaining_h / total_original_h * 100, 1) if total_original_h > 0 else 0.0
     )
 
-    team_size = len([p for p in by_person if p != "_unassigned"])
-    capacity_remaining_h = round(team_size * 8 * days_remaining * 0.8, 1)
+    team_size           = len([p for p in by_person if p != "_unassigned"])
+    capacity_remaining_h= round(team_size * 8 * days_remaining * 0.8, 1)
 
-    current_work_s = total_remaining_s + total_spent_s
-    deviation_pct = (
+    current_work_s  = total_remaining_s + total_spent_s
+    deviation_pct   = (
         round((current_work_s - total_original_s) / total_original_s * 100, 1)
         if total_original_s > 0 else 0.0
     )
 
-    achievable_delta = round(capacity_remaining_h - work_remaining_h, 1)
-    velocity_today_sp = round(done_sp / days_elapsed, 2)
-    time_logged_per_day = round(_h(total_spent_s) / days_elapsed, 2)
-    remaining_per_person = round(work_remaining_h / max(team_size, 1), 1)
+    achievable_delta      = round(capacity_remaining_h - work_remaining_h, 1)
+    velocity_today_sp     = round(done_sp / days_elapsed, 2)
+    time_logged_per_day   = round(_h(total_spent_s) / days_elapsed, 2)
+    remaining_per_person  = round(work_remaining_h / max(team_size, 1), 1)
 
     # ── Finalize by_person ───────────────────────────────────────────────────
     by_person_list = sorted(
         [
             {
-                "name": p["name"], "account_id": aid,
-                "todo": round(p["todo"], 2),
-                "in_progress": round(p["in_progress"], 2),
-                "validation": round(p["validation"], 2),
-                "done": round(p["done"], 2),
-                "todo_count": p["todo_count"],
-                "in_progress_count": p["in_progress_count"],
-                "validation_count": p["validation_count"],
-                "done_count": p["done_count"],
-                "remaining_h": _h(p["remaining_s"]),
-                "velocity_today": round(p["done_sp"] / days_elapsed, 2),
-                "n_projects": len(p["projects"]),
+                "name":               p["name"],
+                "account_id":         aid,
+                "todo":               round(p["todo"], 2),
+                "in_progress":        round(p["in_progress"], 2),
+                "validation":         round(p["validation"], 2),
+                "done":               round(p["done"], 2),
+                "todo_count":         p["todo_count"],
+                "in_progress_count":  p["in_progress_count"],
+                "validation_count":   p["validation_count"],
+                "done_count":         p["done_count"],
+                "remaining_h":        _h(p["remaining_s"]),
+                "velocity_today":     round(p["done_sp"] / days_elapsed, 2),
+                "n_projects":         len(p["projects"]),
             }
             for aid, p in by_person.items()
         ],
@@ -244,54 +316,54 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
                 (prj["done_spent_s"] - prj["done_original_s"]) / prj["done_original_s"] * 100, 1
             )
         by_project_list.append({
-            "key": prj["key"], "name": prj["name"],
-            "todo": round(prj["todo"], 2),
-            "in_progress": round(prj["in_progress"], 2),
-            "validation": round(prj["validation"], 2),
-            "done": round(prj["done"], 2),
-            "todo_count": prj["todo_count"],
-            "in_progress_count": prj["in_progress_count"],
-            "validation_count": prj["validation_count"],
-            "done_count": prj["done_count"],
-            "remaining_h": _h(prj["remaining_s"]),
-            "deviation_pct": dev,
-            "velocity_today": round(prj["done_sp"] / days_elapsed, 2),
+            "key":                  prj["key"],
+            "name":                 prj["name"],
+            "todo":                 round(prj["todo"], 2),
+            "in_progress":          round(prj["in_progress"], 2),
+            "validation":           round(prj["validation"], 2),
+            "done":                 round(prj["done"], 2),
+            "todo_count":           prj["todo_count"],
+            "in_progress_count":    prj["in_progress_count"],
+            "validation_count":     prj["validation_count"],
+            "done_count":           prj["done_count"],
+            "remaining_h":          _h(prj["remaining_s"]),
+            "deviation_pct":        dev,
+            "velocity_today":       round(prj["done_sp"] / days_elapsed, 2),
             "mandatory_incomplete": prj["high_prio_open"],
-            "completion_pct": round(prj["done_count"] / max(total_issues, 1) * 100, 1),
+            "completion_pct":       round(prj["done_count"] / max(total_issues, 1) * 100, 1),
         })
     by_project_list.sort(key=lambda x: x["key"])
-
     deviations.sort(key=lambda x: abs(x["deviation_pct"]), reverse=True)
 
     return {
         "sprint": {
-            "id": sprint["id"],
-            "name": sprint["name"],
-            "state": sprint["state"],
+            "id":         sprint["id"],
+            "name":       sprint["name"],
+            "state":      sprint["state"],
             "start_date": sprint.get("startDate", ""),
-            "end_date": sprint.get("endDate", ""),
+            "end_date":   sprint.get("endDate", ""),
         },
         "kpis": {
-            "days_remaining": days_remaining,
-            "days_elapsed": days_elapsed,
-            "days_total": days_total,
-            "work_remaining_h": work_remaining_h,
-            "work_remaining_pct": work_remaining_pct,
+            "days_remaining":       days_remaining,
+            "days_elapsed":         days_elapsed,
+            "days_total":           days_total,
+            "work_remaining_h":     work_remaining_h,
+            "work_remaining_pct":   work_remaining_pct,
             "capacity_remaining_h": capacity_remaining_h,
-            "deviation_pct": deviation_pct,
-            "achievable": achievable_delta >= 0,
-            "achievable_delta_h": achievable_delta,
-            "overcost_h": _h(overcost_s),
-            "velocity_today_sp": velocity_today_sp,
-            "time_logged_per_day_h": time_logged_per_day,
+            "deviation_pct":        deviation_pct,
+            "achievable":           achievable_delta >= 0,
+            "achievable_delta_h":   achievable_delta,
+            "overcost_h":           _h(overcost_s),
+            "velocity_today_sp":    velocity_today_sp,
+            "time_logged_per_day_h":time_logged_per_day,
             "remaining_per_person_h": remaining_per_person,
-            "team_size": team_size,
-            "done_sp": done_sp,
-            "total_sp": total_sp,
-            "done_issues": done_count,
-            "total_issues": len(issues),
+            "team_size":            team_size,
+            "done_sp":              done_sp,
+            "total_sp":             total_sp,
+            "done_issues":          done_count,
+            "total_issues":         len(issues),
         },
-        "by_person": by_person_list,
+        "by_person":  by_person_list,
         "by_project": by_project_list,
         "deviations": deviations,
     }

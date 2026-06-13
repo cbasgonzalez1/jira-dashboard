@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -37,28 +37,47 @@ const tooltipStyle = {
 // ── Demo / preview data shown before any sprint is selected ───────────────────
 const DEMO_DATA = {
   kpis: {
-    days_remaining: 5, days_elapsed: 9, days_total: 14,
-    work_remaining_h: 48, work_remaining_pct: 35,
-    capacity_remaining_h: 120, team_size: 3,
-    deviation_pct: 12, achievable: true, achievable_delta_h: 72,
-    overcost_h: 4, velocity_today_sp: 3.2, done_sp: 28,
-    time_logged_per_day_h: 5.5, remaining_per_person_h: 16,
+    days_remaining: 6, days_elapsed: 8, days_total: 14,
+    work_remaining_h: 134, work_remaining_pct: 42,
+    capacity_remaining_h: 230, team_size: 5,
+    deviation_pct: 18, achievable: true, achievable_delta_h: 96,
+    overcost_h: 11, velocity_today_sp: 4.6, done_sp: 37,
+    time_logged_per_day_h: 6.2, remaining_per_person_h: 26.8,
+    total_issues: 52, done_issues: 19,
   },
-  sprint: { name: 'Sprint Ejemplo', state: 'active', start_date: '2026-06-02', end_date: '2026-06-16' },
+  sprint: { name: 'Sprint 4 - Ejemplo', state: 'active', start_date: '2026-06-04', end_date: '2026-06-18' },
   by_person: [
-    { account_id: 'u1', name: 'Ana García',    todo: 8,  in_progress: 12, validation: 4, done: 20, todo_count: 2, in_progress_count: 3, validation_count: 1, done_count: 5, remaining_h: 20, velocity_today: 3.1, n_projects: 2 },
-    { account_id: 'u2', name: 'Carlos López',  todo: 4,  in_progress: 8,  validation: 0, done: 16, todo_count: 1, in_progress_count: 2, validation_count: 0, done_count: 4, remaining_h: 12, velocity_today: 2.5, n_projects: 1 },
-    { account_id: 'u3', name: 'Marta Ruiz',    todo: 0,  in_progress: 6,  validation: 2, done: 24, todo_count: 0, in_progress_count: 1, validation_count: 1, done_count: 6, remaining_h: 8,  velocity_today: 3.8, n_projects: 2 },
+    { account_id: 'u1', name: 'Ana García',      todo: 8,  in_progress: 18, validation: 6,  done: 32, todo_count: 2, in_progress_count: 4, validation_count: 2, done_count: 7,  remaining_h: 32, velocity_today: 4.1, n_projects: 3 },
+    { account_id: 'u2', name: 'Carlos López',    todo: 12, in_progress: 10, validation: 0,  done: 20, todo_count: 3, in_progress_count: 3, validation_count: 0, done_count: 4,  remaining_h: 22, velocity_today: 2.5, n_projects: 2 },
+    { account_id: 'u3', name: 'Marta Ruiz',      todo: 0,  in_progress: 14, validation: 4,  done: 40, todo_count: 0, in_progress_count: 3, validation_count: 1, done_count: 9,  remaining_h: 18, velocity_today: 5.6, n_projects: 2 },
+    { account_id: 'u4', name: 'David Sánchez',   todo: 16, in_progress: 6,  validation: 2,  done: 16, todo_count: 4, in_progress_count: 2, validation_count: 1, done_count: 4,  remaining_h: 24, velocity_today: 2.0, n_projects: 1 },
+    { account_id: 'u5', name: 'Lucía Fernández', todo: 4,  in_progress: 8,  validation: 10, done: 24, todo_count: 1, in_progress_count: 2, validation_count: 3, done_count: 5,  remaining_h: 22, velocity_today: 3.1, n_projects: 3 },
   ],
   by_project: [
-    { key: 'SCRUM', name: 'MDA Portal',        todo: 6, in_progress: 16, validation: 4, done: 36, todo_count: 1, in_progress_count: 3, validation_count: 1, done_count: 8, remaining_h: 26, deviation_pct: 12,  velocity_today: 3.1, mandatory_incomplete: 1, completion_pct: 60 },
-    { key: 'CRM',   name: 'CRM & Admissions',  todo: 4, in_progress: 8,  validation: 2, done: 24, todo_count: 1, in_progress_count: 2, validation_count: 1, done_count: 6, remaining_h: 14, deviation_pct: -5,  velocity_today: 2.5, mandatory_incomplete: 0, completion_pct: 75 },
-    { key: 'INF',   name: 'Infrastructure',    todo: 2, in_progress: 4,  validation: 0, done: 16, todo_count: 1, in_progress_count: 1, validation_count: 0, done_count: 4, remaining_h: 6,  deviation_pct: 0,   velocity_today: 2.0, mandatory_incomplete: 0, completion_pct: 73 },
+    { key: 'SCRUM', name: 'MDA Portal',         todo: 14, in_progress: 22, validation: 8,  done: 48, todo_count: 4, in_progress_count: 6, validation_count: 2, done_count: 11, remaining_h: 44, deviation_pct: 22,  velocity_today: 6.2, mandatory_incomplete: 2, completion_pct: 48 },
+    { key: 'CRM',   name: 'CRM & Admissions',   todo: 18, in_progress: 14, validation: 8,  done: 36, todo_count: 5, in_progress_count: 4, validation_count: 2, done_count: 8,  remaining_h: 40, deviation_pct: -8,  velocity_today: 3.4, mandatory_incomplete: 0, completion_pct: 42 },
+    { key: 'INF',   name: 'Infrastructure',     todo: 8,  in_progress: 20, validation: 6,  done: 28, todo_count: 2, in_progress_count: 4, validation_count: 2, done_count: 6,  remaining_h: 34, deviation_pct: 5,   velocity_today: 3.2, mandatory_incomplete: 1, completion_pct: 38 },
+    { key: 'SEC',   name: 'Security & Compliance', todo: 0, in_progress: 0, validation: 0, done: 20, todo_count: 0, in_progress_count: 0, validation_count: 0, done_count: 4,  remaining_h: 0,  deviation_pct: -12, velocity_today: 2.5, mandatory_incomplete: 0, completion_pct: 100 },
   ],
   deviations: [
-    { key: 'SCRUM-42', summary: 'Implementar autenticación SSO', original_h: 8,  spent_h: 14, deviation_pct: 75 },
-    { key: 'CRM-18',   summary: 'Migración de datos legacy',     original_h: 16, spent_h: 22, deviation_pct: 38 },
+    { key: 'SCRUM-42', summary: 'Implementar autenticación SSO',          original_h: 8,  spent_h: 19, deviation_pct: 137.5 },
+    { key: 'CRM-31',   summary: 'Migración de datos legacy a PostgreSQL',  original_h: 16, spent_h: 26, deviation_pct: 62.5 },
+    { key: 'INF-14',   summary: 'Configurar Kubernetes HPA en producción', original_h: 5,  spent_h: 8,  deviation_pct: 60.0 },
+    { key: 'SCRUM-58', summary: 'Dashboard de métricas de rendimiento',    original_h: 10, spent_h: 15, deviation_pct: 50.0 },
   ],
+}
+
+// ── Empty state for charts ─────────────────────────────────────────────────────
+function EmptyChart({ message, height = 260 }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/50 bg-bg-primary/20"
+      style={{ height }}
+    >
+      <BarChart2 size={32} className="text-text-muted opacity-25" />
+      <p className="text-xs text-text-muted text-center max-w-xs px-4 leading-relaxed">{message}</p>
+    </div>
+  )
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -143,15 +162,72 @@ function HoursTooltip({ active, payload, label }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function SprintDashboard() {
+  const [projectKey, setProjectKey] = useState(null)
   const [boardId, setBoardId] = useState(null)
   const [sprintId, setSprintId] = useState(null)
-  const [projectFilter, setProjectFilter] = useState('all')
 
   // ── Queries ────────────────────────────────────────────────────────────
   const boardsQ = useQuery({
     queryKey: ['sd-boards'],
     queryFn: () => getSprintBoards().then(r => r.data),
   })
+
+  // ── Cascading filter derived values ────────────────────────────────────
+  const allBoards = boardsQ.data ?? []
+
+  const uniqueProjects = useMemo(() => {
+    const seen = new Map()
+    for (const b of allBoards) {
+      if (b.project_key && !seen.has(b.project_key)) {
+        seen.set(b.project_key, b.project_name || b.project_key)
+      }
+    }
+    return [...seen.entries()].map(([key, name]) => ({ key, name }))
+  }, [allBoards])
+
+  // Boards available after project filter
+  const filteredBoards = useMemo(
+    () => projectKey ? allBoards.filter(b => b.project_key === projectKey) : allBoards,
+    [allBoards, projectKey],
+  )
+
+  // ── Track board changes to trigger sprint auto-select ─────────────────
+  const boardJustChanged = useRef(false)
+
+  // Auto-select the active sprint when sprints load after a board change
+  useEffect(() => {
+    if (!sprintsQ.data?.length || !boardJustChanged.current) return
+    boardJustChanged.current = false
+    const active = sprintsQ.data.find(s => s.state === 'active')
+    if (active) setSprintId(active.id)
+  }, [sprintsQ.data])
+
+  // ── Bidirectional handlers ─────────────────────────────────────────────
+
+  function handleProjectChange(e) {
+    const key = e.target.value || null
+    setProjectKey(key)
+    setSprintId(null)
+    boardJustChanged.current = false
+    const boards = key ? allBoards.filter(b => b.project_key === key) : allBoards
+    const currentBoardValid = !key || boards.some(b => b.id === boardId)
+    if (!currentBoardValid) {
+      setBoardId(boards.length === 1 ? boards[0].id : null)
+    } else if (key && boards.length === 1 && boardId == null) {
+      setBoardId(boards[0].id)
+    }
+  }
+
+  function handleBoardChange(e) {
+    const id = Number(e.target.value) || null
+    setBoardId(id)
+    setSprintId(null)
+    boardJustChanged.current = true
+    if (id) {
+      const board = allBoards.find(b => b.id === id)
+      if (board?.project_key) setProjectKey(board.project_key)
+    }
+  }
 
   const sprintsQ = useQuery({
     queryKey: ['sd-sprints', boardId],
@@ -176,15 +252,20 @@ export default function SprintDashboard() {
   const kpis = displayData?.kpis ?? {}
   const sprint = displayData?.sprint ?? {}
 
+  const isFuture = !isDemo && !!data && sprint.state === 'future'
+  const isEmpty = !isDemo && !!data && (data.kpis?.total_issues ?? 0) === 0 && sprint.state !== 'future'
+  const kpiNote = isFuture ? 'Sprint futuro — sin datos aún'
+    : isEmpty ? 'Sin issues registradas'
+    : null
+
+  const emptyChartMsg = isFuture
+    ? 'Este sprint aún no ha comenzado — los datos aparecerán cuando empiece'
+    : 'No hay issues en este sprint — añade issues para ver el análisis'
+
   const allByPerson = (displayData?.by_person ?? []).filter(p => p.account_id !== '_unassigned')
   const allByProject = displayData?.by_project ?? []
   const deviations = displayData?.deviations ?? []
-
-  // Project keys for the selector — populated from real or demo data
-  const projects = allByProject.map(p => p.key)
-  const byProject = projectFilter === 'all'
-    ? allByProject
-    : allByProject.filter(p => p.key === projectFilter)
+  const byProject = allByProject
 
   // ── Chart data ─────────────────────────────────────────────────────────
   const personChartData = allByPerson.map(p => ({
@@ -222,33 +303,41 @@ export default function SprintDashboard() {
       {/* ── SECTION 1: Selectors ─────────────────────────────────────────── */}
       <section className="card border border-border">
         <SectionTitle>Filtros</SectionTitle>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4 items-end">
 
+          {/* 1 — Proyecto */}
+          <Select
+            label="Proyecto"
+            value={projectKey ?? ''}
+            minW="min-w-52"
+            onChange={handleProjectChange}
+          >
+            <option value="">Seleccionar proyecto…</option>
+            {uniqueProjects.map(p => (
+              <option key={p.key} value={p.key}>{p.name} ({p.key})</option>
+            ))}
+          </Select>
+
+          {/* 2 — Board: filtrado por proyecto seleccionado */}
           <Select
             label="Board"
-            value={boardId}
+            value={boardId ?? ''}
             minW="min-w-56"
-            onChange={e => {
-              setBoardId(Number(e.target.value) || null)
-              setSprintId(null)
-              setProjectFilter('all')
-            }}
+            onChange={handleBoardChange}
           >
             <option value="">Seleccionar board…</option>
-            {(boardsQ.data ?? []).map(b => (
+            {filteredBoards.map(b => (
               <option key={b.id} value={b.id}>{b.name} ({b.type})</option>
             ))}
           </Select>
 
+          {/* 3 — Sprint: filtrado por board seleccionado */}
           <Select
             label="Sprint"
-            value={sprintId}
+            value={sprintId ?? ''}
             minW="min-w-72"
             disabled={!boardId || sprintsQ.isLoading}
-            onChange={e => {
-              setSprintId(Number(e.target.value) || null)
-              setProjectFilter('all')
-            }}
+            onChange={e => setSprintId(Number(e.target.value) || null)}
           >
             <option value="">Seleccionar sprint…</option>
             {(sprintsQ.data ?? [])
@@ -260,18 +349,6 @@ export default function SprintDashboard() {
                 </option>
               ))}
           </Select>
-
-          {projects.length > 1 && (
-            <Select
-              label="Proyecto"
-              value={projectFilter}
-              minW="min-w-48"
-              onChange={e => setProjectFilter(e.target.value)}
-            >
-              <option value="all">Todos los proyectos</option>
-              {projects.map(pk => <option key={pk} value={pk}>{pk}</option>)}
-            </Select>
-          )}
 
           {sprint.name && (
             <div className="flex flex-col gap-1.5 justify-end pb-0.5">
@@ -323,6 +400,7 @@ export default function SprintDashboard() {
                 icon={Clock}
                 color="blue"
                 subtitle={`${kpis.days_elapsed} transcurridos de ${kpis.days_total}`}
+                note={kpiNote}
               />
 
               <KPICard
@@ -331,6 +409,7 @@ export default function SprintDashboard() {
                 icon={Timer}
                 color="yellow"
                 subtitle={`${kpis.work_remaining_pct}% del total estimado`}
+                note={kpiNote}
               />
 
               <KPICard
@@ -339,6 +418,7 @@ export default function SprintDashboard() {
                 icon={Users}
                 color="green"
                 subtitle={`${kpis.team_size} personas × 8h/d × ${kpis.days_remaining}d × 80%`}
+                note={kpiNote}
               />
 
               <KPICard
@@ -347,6 +427,7 @@ export default function SprintDashboard() {
                 icon={TrendingUp}
                 color={devColor}
                 subtitle="vs estimación original del sprint"
+                note={kpiNote}
               />
 
               <KPICard
@@ -355,6 +436,7 @@ export default function SprintDashboard() {
                 icon={CheckCircle}
                 color={kpis.achievable ? 'green' : 'red'}
                 subtitle="capacidad restante − trabajo restante"
+                note={kpiNote}
               />
 
               <KPICard
@@ -363,6 +445,7 @@ export default function SprintDashboard() {
                 icon={AlertTriangle}
                 color={kpis.overcost_h > 0 ? 'red' : 'green'}
                 subtitle="exceso en issues completadas"
+                note={kpiNote}
               />
 
               <KPICard
@@ -371,6 +454,7 @@ export default function SprintDashboard() {
                 icon={Zap}
                 color="purple"
                 subtitle={`${kpis.done_sp} SP completados en ${kpis.days_elapsed}d`}
+                note={kpiNote}
               />
 
               <KPICard
@@ -379,6 +463,7 @@ export default function SprintDashboard() {
                 icon={BarChart2}
                 color="blue"
                 subtitle="promedio registrado por día"
+                note={kpiNote}
               />
 
               <KPICard
@@ -387,6 +472,7 @@ export default function SprintDashboard() {
                 icon={User}
                 color="yellow"
                 subtitle={`distribuido entre ${kpis.team_size} personas`}
+                note={kpiNote}
               />
 
             </div>
@@ -400,38 +486,42 @@ export default function SprintDashboard() {
               {/* Chart 1: Horizontal stacked — work per person */}
               <div className="card border border-border">
                 <p className="card-title">Trabajo por persona (horas)</p>
-                <ResponsiveContainer width="100%" height={sprintBarH}>
-                  <BarChart
-                    data={personChartData}
-                    layout="vertical"
-                    margin={{ top: 4, right: 24, bottom: 4, left: 100 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_STYLE.grid} horizontal={false} />
-                    <XAxis
-                      type="number"
-                      tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
-                      axisLine={{ stroke: CHART_STYLE.border }}
-                      tickLine={false}
-                      unit="h"
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={96}
-                    />
-                    <Tooltip content={<HoursTooltip />} />
-                    <Legend
-                      wrapperStyle={{ fontSize: 11, color: CHART_STYLE.tick, paddingTop: 8 }}
-                    />
-                    <Bar dataKey="Backlog"       stackId="a" fill={STATUS_COLORS.Backlog} />
-                    <Bar dataKey="En Progreso"   stackId="a" fill={STATUS_COLORS['En Progreso']} />
-                    <Bar dataKey="Validación"    stackId="a" fill={STATUS_COLORS.Validación} />
-                    <Bar dataKey="Done"          stackId="a" fill={STATUS_COLORS.Done} radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {personChartData.length === 0 ? (
+                  <EmptyChart message={emptyChartMsg} height={sprintBarH} />
+                ) : (
+                  <ResponsiveContainer width="100%" height={sprintBarH}>
+                    <BarChart
+                      data={personChartData}
+                      layout="vertical"
+                      margin={{ top: 4, right: 24, bottom: 4, left: 100 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_STYLE.grid} horizontal={false} />
+                      <XAxis
+                        type="number"
+                        tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
+                        axisLine={{ stroke: CHART_STYLE.border }}
+                        tickLine={false}
+                        unit="h"
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={96}
+                      />
+                      <Tooltip content={<HoursTooltip />} />
+                      <Legend
+                        wrapperStyle={{ fontSize: 11, color: CHART_STYLE.tick, paddingTop: 8 }}
+                      />
+                      <Bar dataKey="Backlog"       stackId="a" fill={STATUS_COLORS.Backlog} />
+                      <Bar dataKey="En Progreso"   stackId="a" fill={STATUS_COLORS['En Progreso']} />
+                      <Bar dataKey="Validación"    stackId="a" fill={STATUS_COLORS.Validación} />
+                      <Bar dataKey="Done"          stackId="a" fill={STATUS_COLORS.Done} radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
 
               {/* Charts 2 & 3 side by side */}
@@ -440,68 +530,76 @@ export default function SprintDashboard() {
                 {/* Chart 2: Vertical stacked — work per project */}
                 <div className="card border border-border">
                   <p className="card-title">Trabajo restante por proyecto (horas)</p>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={projectChartData} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_STYLE.grid} vertical={false} />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
-                        axisLine={{ stroke: CHART_STYLE.border }}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
-                        axisLine={false}
-                        tickLine={false}
-                        unit="h"
-                      />
-                      <Tooltip content={<HoursTooltip />} />
-                      <Legend wrapperStyle={{ fontSize: 11, color: CHART_STYLE.tick, paddingTop: 8 }} />
-                      <Bar dataKey="Backlog"       stackId="a" fill={STATUS_COLORS.Backlog} />
-                      <Bar dataKey="En Progreso"   stackId="a" fill={STATUS_COLORS['En Progreso']} />
-                      <Bar dataKey="Validación"    stackId="a" fill={STATUS_COLORS.Validación} />
-                      <Bar dataKey="Done"          stackId="a" fill={STATUS_COLORS.Done} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {projectChartData.length === 0 ? (
+                    <EmptyChart message={emptyChartMsg} />
+                  ) : (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={projectChartData} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={CHART_STYLE.grid} vertical={false} />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
+                          axisLine={{ stroke: CHART_STYLE.border }}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                          unit="h"
+                        />
+                        <Tooltip content={<HoursTooltip />} />
+                        <Legend wrapperStyle={{ fontSize: 11, color: CHART_STYLE.tick, paddingTop: 8 }} />
+                        <Bar dataKey="Backlog"       stackId="a" fill={STATUS_COLORS.Backlog} />
+                        <Bar dataKey="En Progreso"   stackId="a" fill={STATUS_COLORS['En Progreso']} />
+                        <Bar dataKey="Validación"    stackId="a" fill={STATUS_COLORS.Validación} />
+                        <Bar dataKey="Done"          stackId="a" fill={STATUS_COLORS.Done} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
 
                 {/* Chart 3: Vertical — completion % per project */}
                 <div className="card border border-border">
                   <p className="card-title">Completitud por proyecto (%)</p>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={completionChartData} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_STYLE.grid} vertical={false} />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
-                        axisLine={{ stroke: CHART_STYLE.border }}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        domain={[0, 100]}
-                        tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
-                        axisLine={false}
-                        tickLine={false}
-                        unit="%"
-                      />
-                      <Tooltip
-                        {...tooltipStyle}
-                        formatter={v => [`${v}%`, 'Completado']}
-                      />
-                      <Bar dataKey="pct" name="Completado %" radius={[4, 4, 0, 0]}>
-                        {completionChartData.map((entry, i) => (
-                          <Cell
-                            key={`c-${i}`}
-                            fill={
-                              entry.pct >= 75 ? '#10b981'
-                                : entry.pct >= 50 ? '#f59e0b'
-                                : '#ef4444'
-                            }
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {completionChartData.length === 0 ? (
+                    <EmptyChart message={emptyChartMsg} />
+                  ) : (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={completionChartData} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={CHART_STYLE.grid} vertical={false} />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
+                          axisLine={{ stroke: CHART_STYLE.border }}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          domain={[0, 100]}
+                          tick={{ fill: CHART_STYLE.tick, fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                          unit="%"
+                        />
+                        <Tooltip
+                          {...tooltipStyle}
+                          formatter={v => [`${v}%`, 'Completado']}
+                        />
+                        <Bar dataKey="pct" name="Completado %" radius={[4, 4, 0, 0]}>
+                          {completionChartData.map((entry, i) => (
+                            <Cell
+                              key={`c-${i}`}
+                              fill={
+                                entry.pct >= 75 ? '#10b981'
+                                  : entry.pct >= 50 ? '#f59e0b'
+                                  : '#ef4444'
+                              }
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
 
               </div>

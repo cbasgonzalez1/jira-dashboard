@@ -1,71 +1,93 @@
-import httpx
+import urllib3
+import requests
 from config import settings
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class JiraClient:
     def __init__(self):
-        self.base_url = settings.jira_base_url
-        self.auth = httpx.BasicAuth(settings.jira_user, settings.jira_api_token)
-        self.headers = {
+        self.base_url = settings.jira_base_url.rstrip("/")
+        self.session = requests.Session()
+        self.session.auth = (settings.jira_user, settings.jira_password)
+        self.session.headers.update({
             "Accept": "application/json",
             "Content-Type": "application/json",
-        }
+        })
+        self.session.verify = False
+
+    # ── HTTP primitives ───────────────────────────────────────────────────────
 
     def _get(self, path: str, params: dict = None) -> dict:
-        url = f"{self.base_url}{path}"
-        r = httpx.get(url, auth=self.auth, headers=self.headers, params=params, timeout=30)
+        r = self.session.get(f"{self.base_url}{path}", params=params, timeout=30)
         r.raise_for_status()
         return r.json()
 
     def _post(self, path: str, payload: dict) -> dict:
-        url = f"{self.base_url}{path}"
-        r = httpx.post(url, auth=self.auth, headers=self.headers, json=payload, timeout=30)
-        if not r.is_success:
-            raise httpx.HTTPStatusError(
-                f"HTTP {r.status_code} — {r.text[:400]}",
-                request=r.request,
-                response=r,
+        r = self.session.post(f"{self.base_url}{path}", json=payload, timeout=30)
+        if not r.ok:
+            raise requests.HTTPError(
+                f"HTTP {r.status_code} — {r.text[:400]}", response=r
             )
         return r.json() if r.content else {}
 
     def _put(self, path: str, payload: dict) -> dict:
-        url = f"{self.base_url}{path}"
-        r = httpx.put(url, auth=self.auth, headers=self.headers, json=payload, timeout=30)
+        r = self.session.put(f"{self.base_url}{path}", json=payload, timeout=30)
         r.raise_for_status()
         return r.json() if r.content else {}
+
+    def _delete(self, path: str) -> None:
+        r = self.session.delete(f"{self.base_url}{path}", timeout=30)
+        r.raise_for_status()
 
     # ── Identity ──────────────────────────────────────────────────────────────
 
     def get_myself(self) -> dict:
-        return self._get("/rest/api/3/myself")
+        return self._get("/rest/api/2/myself")
 
     # ── Projects ──────────────────────────────────────────────────────────────
 
     def get_all_projects(self) -> list:
-        result = self._get("/rest/api/3/project/search")
-        return result.get("values", [])
+        return self._get("/rest/api/2/project") or []
 
     def get_project(self, project_key: str) -> dict:
-        return self._get(f"/rest/api/3/project/{project_key}")
+        return self._get(f"/rest/api/2/project/{project_key}")
 
     # ── Issues ────────────────────────────────────────────────────────────────
 
-    def search_issues(self, jql: str, fields: list = None, max_results: int = 100) -> list:
-        payload = {
-            "jql": jql,
-            "maxResults": max_results,
-            "fields": fields or [
-                "summary", "status", "assignee", "priority",
-                "issuetype", "story_points", "created", "updated", "parent",
-                "customfield_10016",  # story points (next-gen)
-                "customfield_10028",  # story points (classic)
-            ],
-        }
-        result = self._post("/rest/api/3/search/jql", payload)
-        return result.get("issues", [])
+    def search_issues(
+        self,
+        jql: str,
+        fields: list = None,
+        max_results: int = 100,
+    ) -> list:
+        """Paginated JQL search — fetches all pages automatically."""
+        default_fields = [
+            "summary", "status", "assignee", "priority", "issuetype", "project",
+            "customfield_10002",   # Story Points (Alcatel)
+            "customfield_11934",   # Original Story Points (historical)
+            "timetracking", "timespent", "timeoriginalestimate",
+        ]
+        all_issues: list = []
+        start_at = 0
+        while True:
+            payload = {
+                "jql": jql,
+                "maxResults": max_results,
+                "startAt": start_at,
+                "fields": fields or default_fields,
+            }
+            result = self._post("/rest/api/2/search", payload)
+            batch = result.get("issues", [])
+            all_issues.extend(batch)
+            total = result.get("total", 0)
+            start_at += len(batch)
+            if not batch or start_at >= total:
+                break
+        return all_issues
 
     def get_issue(self, issue_key: str) -> dict:
-        return self._get(f"/rest/api/3/issue/{issue_key}")
+        return self._get(f"/rest/api/2/issue/{issue_key}")
 
     def create_issue(
         self,
@@ -75,7 +97,7 @@ class JiraClient:
         description: str = "",
         priority: str = "Medium",
         story_points: int = None,
-        assignee_id: str = None,
+        assignee_name: str = None,
         parent_key: str = None,
     ) -> dict:
         fields: dict = {
@@ -83,83 +105,91 @@ class JiraClient:
             "summary": summary,
             "issuetype": {"name": issue_type},
             "priority": {"name": priority},
-            "description": {
-                "type": "doc",
-                "version": 1,
-                "content": [
-                    {
-                        "type": "paragraph",
-                        "content": [{"type": "text", "text": description or summary}],
-                    }
-                ],
-            },
+            "description": description or summary,
         }
         if story_points is not None:
-            fields["story_points"] = story_points
-        if assignee_id:
-            fields["assignee"] = {"accountId": assignee_id}
+            fields["customfield_10002"] = story_points
+        if assignee_name:
+            fields["assignee"] = {"name": assignee_name}
         if parent_key:
             fields["parent"] = {"key": parent_key}
-
-        return self._post("/rest/api/3/issue", {"fields": fields})
+        return self._post("/rest/api/2/issue", {"fields": fields})
 
     def update_issue(self, issue_key: str, fields: dict) -> dict:
-        return self._put(f"/rest/api/3/issue/{issue_key}", {"fields": fields})
+        return self._put(f"/rest/api/2/issue/{issue_key}", {"fields": fields})
 
     def get_transitions(self, issue_key: str) -> list:
-        result = self._get(f"/rest/api/3/issue/{issue_key}/transitions")
-        return result.get("transitions", [])
+        return self._get(f"/rest/api/2/issue/{issue_key}/transitions").get("transitions", [])
 
     def transition_issue(self, issue_key: str, transition_id: str) -> None:
-        url = f"{self.base_url}/rest/api/3/issue/{issue_key}/transitions"
-        r = httpx.post(
-            url,
-            auth=self.auth,
-            headers=self.headers,
-            json={"transition": {"id": transition_id}},
-            timeout=30,
+        self._post(
+            f"/rest/api/2/issue/{issue_key}/transitions",
+            {"transition": {"id": transition_id}},
         )
-        r.raise_for_status()
 
     # ── Users ─────────────────────────────────────────────────────────────────
 
     def get_users(self, project_key: str) -> list:
         result = self._get(
-            "/rest/api/3/user/assignable/search",
+            "/rest/api/2/user/assignable/search",
             {"project": project_key, "maxResults": 50},
         )
         return result if isinstance(result, list) else []
 
     # ── Boards & Sprints (Agile API) ──────────────────────────────────────────
 
-    def get_all_boards(self) -> list:
-        result = self._get("/rest/agile/1.0/board", {"maxResults": 50})
-        return result.get("values", [])
+    def get_all_boards(self, board_type: str = "scrum") -> list:
+        """Paginated fetch of all boards of a given type."""
+        all_boards: list = []
+        start = 0
+        while True:
+            result = self._get("/rest/agile/1.0/board", {
+                "type": board_type,
+                "maxResults": 50,
+                "startAt": start,
+            })
+            values = result.get("values", [])
+            all_boards.extend(values)
+            if result.get("isLast", True) or not values:
+                break
+            start += len(values)
+        return all_boards
+
+    def get_board_configuration(self, board_id: int) -> dict:
+        return self._get(f"/rest/agile/1.0/board/{board_id}/configuration")
 
     def get_boards(self, project_key: str) -> list:
         result = self._get("/rest/agile/1.0/board", {"projectKeyOrId": project_key})
         return result.get("values", [])
 
     def get_sprints(self, board_id: int, state: str = None) -> list:
-        params = {}
+        """Paginated sprint fetch for a board."""
+        params: dict = {"maxResults": 50}
         if state:
             params["state"] = state
-        result = self._get(f"/rest/agile/1.0/board/{board_id}/sprint", params)
-        return result.get("values", [])
-
-    def get_sprint_issues(self, sprint_id: int) -> list:
-        result = self._get(f"/rest/agile/1.0/sprint/{sprint_id}/issue")
-        return result.get("issues", [])
+        all_sprints: list = []
+        start = 0
+        while True:
+            params["startAt"] = start
+            try:
+                result = self._get(f"/rest/agile/1.0/board/{board_id}/sprint", params)
+            except Exception:
+                break
+            values = result.get("values", [])
+            all_sprints.extend(values)
+            if result.get("isLast", True) or not values:
+                break
+            start += len(values)
+        return all_sprints
 
     def get_sprint_issues_by_jql(self, sprint_id: int) -> list:
         return self.search_issues(
             jql=f"sprint = {sprint_id}",
             fields=[
                 "summary", "status", "assignee", "priority", "issuetype", "project",
-                "customfield_10016", "customfield_10028",
-                "timetracking", "timespent", "timeoriginalestimate", "aggregatetimeremaining",
+                "customfield_10002", "customfield_11934",
+                "timetracking", "timespent", "timeoriginalestimate",
             ],
-            max_results=500,
         )
 
     def create_sprint(
@@ -188,20 +218,19 @@ class JiraClient:
     # ── Versions ──────────────────────────────────────────────────────────────
 
     def get_versions(self, project_key: str) -> list:
-        return self._get(f"/rest/api/3/project/{project_key}/versions")
+        return self._get(f"/rest/api/2/project/{project_key}/versions")
 
     # ── Field helpers ─────────────────────────────────────────────────────────
 
     def get_story_points_field(self) -> str:
-        """Return the custom field ID for Story Points (varies by instance)."""
         try:
-            fields = self._get("/rest/api/3/field")
+            fields = self._get("/rest/api/2/field")
             for f in fields:
                 if f.get("name", "").lower() == "story points":
                     return f["id"]
         except Exception:
             pass
-        return "customfield_10016"
+        return "customfield_10002"
 
     def is_healthy(self) -> bool:
         try:

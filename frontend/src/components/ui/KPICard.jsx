@@ -8,7 +8,7 @@ const COLOR_MAP = {
   purple: { text: 'text-accent-purple', bg: 'bg-accent-purple/10', border: 'border-accent-purple/20' },
 }
 
-export default function KPICard({ label, value, icon: Icon, color = 'blue', subtitle }) {
+export default function KPICard({ label, value, icon: Icon, color = 'blue', subtitle, note }) {
   const c = COLOR_MAP[color] || COLOR_MAP.blue
 
   return (
@@ -26,6 +26,11 @@ export default function KPICard({ label, value, icon: Icon, color = 'blue', subt
           {typeof value === 'number' ? value.toLocaleString() : value ?? '—'}
         </div>
         {subtitle && <p className="text-xs text-text-muted mt-1">{subtitle}</p>}
+        {note && (
+          <p className="text-xs mt-2 text-text-muted italic border-t border-border/40 pt-1.5">
+            {note}
+          </p>
+        )}
       </div>
     </div>
   )
