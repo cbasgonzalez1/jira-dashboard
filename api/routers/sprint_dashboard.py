@@ -57,24 +57,15 @@ def _sp(fields: dict) -> float:
 # ── Board helpers ──────────────────────────────────────────────────────────────
 
 def _fetch_boards() -> list[dict]:
-    """Fetch all scrum boards with project info. 403/401 boards silently skipped."""
+    """Fetch all scrum boards with project info. Boards without projectKey skipped."""
     raw_boards = client.get_all_boards(board_type="scrum")
     result = []
     for b in raw_boards:
         loc = b.get("location") or {}
         proj_key  = loc.get("projectKey", "")
         proj_name = loc.get("projectName", "")
-
-        # Try board configuration for project info if missing
         if not proj_key:
-            try:
-                cfg = client.get_board_configuration(b["id"])
-                cfg_loc = cfg.get("location") or {}
-                proj_key  = cfg_loc.get("projectKey", "")
-                proj_name = cfg_loc.get("projectName", "")
-            except Exception:
-                pass  # 403/401 or other error — skip project enrichment
-
+            continue  # board not linked to a project — skip
         result.append({
             "id":           b["id"],
             "name":         b["name"],
