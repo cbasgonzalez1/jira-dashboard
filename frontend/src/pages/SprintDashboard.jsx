@@ -191,6 +191,19 @@ export default function SprintDashboard() {
     [allBoards, projectKey],
   )
 
+  const sprintsQ = useQuery({
+    queryKey: ['sd-sprints', boardId],
+    queryFn: () => getSprintSprints(boardId).then(r => r.data),
+    enabled: !!boardId,
+  })
+
+  const dataQ = useQuery({
+    queryKey: ['sd-data', boardId, sprintId],
+    queryFn: () => getSprintData(boardId, sprintId).then(r => r.data),
+    enabled: !!(boardId && sprintId),
+    staleTime: 60_000,
+  })
+
   // ── Track board changes to trigger sprint auto-select ─────────────────
   const boardJustChanged = useRef(false)
 
@@ -228,19 +241,6 @@ export default function SprintDashboard() {
       if (board?.project_key) setProjectKey(board.project_key)
     }
   }
-
-  const sprintsQ = useQuery({
-    queryKey: ['sd-sprints', boardId],
-    queryFn: () => getSprintSprints(boardId).then(r => r.data),
-    enabled: !!boardId,
-  })
-
-  const dataQ = useQuery({
-    queryKey: ['sd-data', boardId, sprintId],
-    queryFn: () => getSprintData(boardId, sprintId).then(r => r.data),
-    enabled: !!(boardId && sprintId),
-    staleTime: 60_000,
-  })
 
   // ── Derived data ───────────────────────────────────────────────────────
   const data = dataQ.data
