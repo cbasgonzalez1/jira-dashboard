@@ -159,8 +159,21 @@ class JiraClient:
         return self._get(f"/rest/agile/1.0/board/{board_id}/configuration")
 
     def get_boards(self, project_key: str) -> list:
-        result = self._get("/rest/agile/1.0/board", {"projectKeyOrId": project_key})
-        return result.get("values", [])
+        """Paginated fetch of boards for a specific project."""
+        all_boards: list = []
+        start = 0
+        while True:
+            result = self._get("/rest/agile/1.0/board", {
+                "projectKeyOrId": project_key,
+                "maxResults": 50,
+                "startAt": start,
+            })
+            values = result.get("values", [])
+            all_boards.extend(values)
+            if result.get("isLast", True) or not values:
+                break
+            start += len(values)
+        return all_boards
 
     def get_sprints(self, board_id: int, state: str = None) -> list:
         """Paginated sprint fetch for a board."""

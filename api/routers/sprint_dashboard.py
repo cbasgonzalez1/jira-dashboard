@@ -54,48 +54,26 @@ def _sp(fields: dict) -> float:
     )
 
 
-# ── Board helpers ──────────────────────────────────────────────────────────────
-
-def _fetch_boards() -> list[dict]:
-    """Fetch all scrum boards with project info. Boards without projectKey skipped."""
-    raw_boards = client.get_all_boards(board_type="scrum")
-    result = []
-    for b in raw_boards:
-        loc = b.get("location") or {}
-        proj_key  = loc.get("projectKey", "")
-        proj_name = loc.get("projectName", "")
-        if not proj_key:
-            continue  # board not linked to a project — skip
-        result.append({
-            "id":           b["id"],
-            "name":         b["name"],
-            "type":         b.get("type", ""),
-            "project_key":  proj_key,
-            "project_name": proj_name,
-        })
-    return result
-
-
 # ── Endpoints ─────────────────────────────────────────────────────────────────
-
-@router.get("/boards")
-async def list_boards():
-    return _fetch_boards()
-
 
 @router.get("/projects")
 async def list_projects():
-    """Unique projects derived from boards — no direct call to /api/2/project."""
-    boards = _fetch_boards()
-    seen: dict[str, str] = {}
-    for b in boards:
-        key = b["project_key"]
-        if key and key not in seen:
-            seen[key] = b["project_name"] or key
+    """All projects accessible to the user via /rest/api/2/project."""
+    projects = client.get_all_projects()
     return sorted(
-        [{"key": k, "name": v} for k, v in seen.items()],
+        [{"key": p["key"], "name": p["name"]} for p in projects],
         key=lambda x: x["name"],
     )
+
+
+@router.get("/boards")
+async def list_boards(project_key: str = Query(None)):
+    """Boards for a project (when project_key given) or all scrum boards."""
+    if project_key:
+        raw = client.get_boards(project_key)
+    else:
+        raw = client.get_all_boards(board_type="scrum")
+    return [{"id": b["id"], "name": b["name"], "type": b.get("type", "")} for b in raw]
 
 
 @router.get("/sprints/{board_id}")

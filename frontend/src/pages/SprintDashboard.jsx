@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -9,7 +9,7 @@ import {
   Zap, BarChart2, User, ChevronDown,
 } from 'lucide-react'
 import clsx from 'clsx'
-import { getSprintBoards, getSprintSprints, getSprintData } from '../api/jiraApi.js'
+import { getSprintProjects, getSprintBoards, getSprintSprints, getSprintData } from '../api/jiraApi.js'
 import KPICard from '../components/ui/KPICard.jsx'
 import { ChartSkeleton, ErrorCard } from '../components/ui/LoadingSpinner.jsx'
 
@@ -167,29 +167,16 @@ export default function SprintDashboard() {
   const [sprintId, setSprintId] = useState(null)
 
   // ── Queries ────────────────────────────────────────────────────────────
-  const boardsQ = useQuery({
-    queryKey: ['sd-boards'],
-    queryFn: () => getSprintBoards().then(r => r.data),
+  const projectsQ = useQuery({
+    queryKey: ['sd-projects'],
+    queryFn: () => getSprintProjects().then(r => r.data),
   })
 
-  // ── Cascading filter derived values ────────────────────────────────────
-  const allBoards = boardsQ.data ?? []
-
-  const uniqueProjects = useMemo(() => {
-    const seen = new Map()
-    for (const b of allBoards) {
-      if (b.project_key && !seen.has(b.project_key)) {
-        seen.set(b.project_key, b.project_name || b.project_key)
-      }
-    }
-    return [...seen.entries()].map(([key, name]) => ({ key, name }))
-  }, [allBoards])
-
-  // Boards available after project filter
-  const filteredBoards = useMemo(
-    () => projectKey ? allBoards.filter(b => b.project_key === projectKey) : allBoards,
-    [allBoards, projectKey],
-  )
+  const boardsQ = useQuery({
+    queryKey: ['sd-boards', projectKey],
+    queryFn: () => getSprintBoards(projectKey).then(r => r.data),
+    enabled: !!projectKey,
+  })
 
   const sprintsQ = useQuery({
     queryKey: ['sd-sprints', boardId],
@@ -204,10 +191,9 @@ export default function SprintDashboard() {
     staleTime: 60_000,
   })
 
-  // ── Track board changes to trigger sprint auto-select ─────────────────
+  // ── Auto-select active sprint when board changes ───────────────────────
   const boardJustChanged = useRef(false)
 
-  // Auto-select the active sprint when sprints load after a board change
   useEffect(() => {
     if (!sprintsQ.data?.length || !boardJustChanged.current) return
     boardJustChanged.current = false
@@ -215,20 +201,14 @@ export default function SprintDashboard() {
     if (active) setSprintId(active.id)
   }, [sprintsQ.data])
 
-  // ── Bidirectional handlers ─────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────
 
   function handleProjectChange(e) {
     const key = e.target.value || null
     setProjectKey(key)
+    setBoardId(null)
     setSprintId(null)
     boardJustChanged.current = false
-    const boards = key ? allBoards.filter(b => b.project_key === key) : allBoards
-    const currentBoardValid = !key || boards.some(b => b.id === boardId)
-    if (!currentBoardValid) {
-      setBoardId(boards.length === 1 ? boards[0].id : null)
-    } else if (key && boards.length === 1 && boardId == null) {
-      setBoardId(boards[0].id)
-    }
   }
 
   function handleBoardChange(e) {
@@ -236,10 +216,6 @@ export default function SprintDashboard() {
     setBoardId(id)
     setSprintId(null)
     boardJustChanged.current = true
-    if (id) {
-      const board = allBoards.find(b => b.id === id)
-      if (board?.project_key) setProjectKey(board.project_key)
-    }
   }
 
   // ── Derived data ───────────────────────────────────────────────────────
@@ -313,20 +289,21 @@ export default function SprintDashboard() {
             onChange={handleProjectChange}
           >
             <option value="">Seleccionar proyecto…</option>
-            {uniqueProjects.map(p => (
+            {(projectsQ.data ?? []).map(p => (
               <option key={p.key} value={p.key}>{p.name} ({p.key})</option>
             ))}
           </Select>
 
-          {/* 2 — Board: filtrado por proyecto seleccionado */}
+          {/* 2 — Board: cargado según proyecto seleccionado */}
           <Select
             label="Board"
             value={boardId ?? ''}
             minW="min-w-56"
+            disabled={boardsQ.isLoading}
             onChange={handleBoardChange}
           >
-            <option value="">Seleccionar board…</option>
-            {filteredBoards.map(b => (
+            <option value="">{!projectKey ? 'Selecciona un proyecto primero…' : 'Seleccionar board…'}</option>
+            {(boardsQ.data ?? []).map(b => (
               <option key={b.id} value={b.id}>{b.name} ({b.type})</option>
             ))}
           </Select>
