@@ -20,7 +20,9 @@
       "Bash(npm audit *)",
       "Bash(npm list *)",
       "Bash(node --input-type=module --eval \"import\\('/dev/stdin'\\)\")",
-      "Bash(npx --yes acorn --ecma2020 --module src/pages/SprintDashboard.jsx)"
+      "Bash(npx --yes acorn --ecma2020 --module src/pages/SprintDashboard.jsx)",
+      "Bash(curl -s http://localhost:8000/api/overview)",
+      "Bash(curl -s http://localhost:8000/api/sprint-dashboard/projects)"
     ]
   }
 }

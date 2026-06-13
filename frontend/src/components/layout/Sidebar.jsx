@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, TrendingUp, Flame, ListTodo, Users, ExternalLink, Kanban } from 'lucide-react'
-import { useProject } from '../../App.jsx'
 import clsx from 'clsx'
 
 const NAV = [
@@ -13,8 +12,6 @@ const NAV = [
 ]
 
 export default function Sidebar() {
-  const { project, setProject, projects } = useProject()
-
   return (
     <aside className="fixed top-0 left-0 bottom-0 w-60 bg-bg-secondary border-r border-border flex flex-col z-20">
       {/* Logo */}
@@ -70,29 +67,6 @@ export default function Sidebar() {
           </a>
         </div>
       </nav>
-
-      {/* Project selector */}
-      <div className="px-3 py-4 border-t border-border">
-        <p className="px-2 mb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">Proyecto</p>
-        <div className="space-y-1">
-          {projects.map(p => (
-            <button
-              key={p.key}
-              onClick={() => setProject(p.key)}
-              className={clsx(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150 text-left',
-                project === p.key
-                  ? 'bg-bg-primary text-text-primary font-medium'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-primary'
-              )}
-            >
-              <span className="w-2 h-2 rounded-full flex-shrink-0 bg-accent-blue" />
-              <span className="font-mono text-xs text-text-muted w-12 flex-shrink-0 truncate">{p.key}</span>
-              <span className="truncate">{p.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
     </aside>
   )
 }

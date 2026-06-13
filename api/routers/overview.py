@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -6,6 +7,7 @@ from jira_client import JiraClient
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 client = JiraClient()
+logger = logging.getLogger(__name__)
 
 
 def get_overview_data() -> dict:
@@ -20,10 +22,13 @@ def get_overview_data() -> dict:
 
     try:
         raw_projects = client.get_all_projects()
-    except Exception:
+        logger.info(f"get_all_projects returned {len(raw_projects)} projects: {[p['key'] for p in raw_projects]}")
+    except Exception as e:
+        logger.error(f"get_all_projects failed: {e}")
         return empty
 
     if not raw_projects:
+        logger.warning("get_all_projects returned empty list")
         return empty
 
     projects_data = []
@@ -41,33 +46,42 @@ def get_overview_data() -> dict:
                 fields=["summary", "status", "issuetype"],
                 max_results=200,
             )
+            logger.info(f"[{key}] open_issues: {len(open_issues)}")
+
             sprint_issues = client.search_issues(
                 f'project = {key} AND sprint in openSprints()',
                 fields=["summary", "status", "issuetype"],
                 max_results=200,
             )
+            logger.info(f"[{key}] sprint_issues: {len(sprint_issues)}")
+
             sprint_done = [
                 i for i in sprint_issues
-                if (i["fields"].get("status") or {}).get("name") in (
-                    "Done", "Hecho", "Cerrado", "Resuelto", "Closed", "Resolved"
+                if (i["fields"].get("status") or {}).get("name", "").lower() in (
+                    "done", "hecho", "cerrado", "resuelto", "closed", "resolved"
                 )
             ]
+
             critical_bugs = client.search_issues(
                 f'project = {key} AND issuetype = Bug AND priority = Highest AND resolution = Unresolved',
                 fields=["summary", "priority"],
                 max_results=50,
             )
+
             unassigned = client.search_issues(
                 f'project = {key} AND assignee is EMPTY AND resolution = Unresolved',
                 fields=["summary"],
                 max_results=50,
             )
+
             epics_ip = client.search_issues(
                 f'project = {key} AND issuetype = Epic AND status = "In Progress"',
                 fields=["summary", "status"],
                 max_results=20,
             )
-        except Exception:
+
+        except Exception as e:
+            logger.error(f"[{key}] search_issues failed: {e}")
             continue
 
         total_open += len(open_issues)
@@ -87,6 +101,7 @@ def get_overview_data() -> dict:
             "epics_in_progress": len(epics_ip),
         })
 
+    logger.info(f"overview complete: {len(projects_data)} projects, total_open={total_open}")
     return {
         "projects": projects_data,
         "total_open": total_open,
