@@ -14,13 +14,13 @@ const AVATAR_COLORS = [
 ]
 
 const TYPE_PILL_COLORS = {
-  story: 'bg-accent-blue/15 text-accent-blue',
-  bug:   'bg-accent-red/15 text-accent-red',
-  task:  'bg-accent-green/15 text-accent-green',
-  epic:  'bg-accent-purple/15 text-accent-purple',
+  story:    'bg-accent-blue/15 text-accent-blue',
+  bug:      'bg-accent-red/15 text-accent-red',
+  task:     'bg-accent-green/15 text-accent-green',
+  epic:     'bg-accent-purple/15 text-accent-purple',
   historia: 'bg-accent-blue/15 text-accent-blue',
-  error: 'bg-accent-red/15 text-accent-red',
-  tarea: 'bg-accent-green/15 text-accent-green',
+  error:    'bg-accent-red/15 text-accent-red',
+  tarea:    'bg-accent-green/15 text-accent-green',
 }
 
 function initials(name) {
@@ -57,7 +57,7 @@ function UserCard({ username, info, idx }) {
         </div>
         <div className="bg-bg-primary rounded-lg p-2 text-center">
           <div className="text-lg font-bold text-accent-green tabular-nums">{info.story_points}</div>
-          <div className="text-xs text-text-muted">Points</div>
+          <div className="text-xs text-text-muted">Puntos</div>
         </div>
       </div>
 
@@ -96,13 +96,12 @@ export default function TeamLoad() {
     refetchInterval: 60_000,
   })
 
-  if (isError) return <ErrorCard message="Failed to load team data." onRetry={refetch} />
+  if (isError) return <ErrorCard message="Error al cargar datos del equipo." onRetry={refetch} />
 
   const users = data?.users ?? []
   const assignedUsers = users.filter(([k]) => k !== '_unassigned')
   const unassigned = users.find(([k]) => k === '_unassigned')?.[1]
   const totalBlocked = users.reduce((s, [, info]) => s + info.blocked, 0)
-  const totalSP = users.reduce((s, [, info]) => s + info.story_points, 0)
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -110,10 +109,10 @@ export default function TeamLoad() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading ? Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />) : (
           <>
-            <KPICard label="Team Members"  value={assignedUsers.length}  icon={Users}         color="blue"   subtitle="with open issues" />
-            <KPICard label="Total Issues"  value={data?.total_issues}    icon={Users}         color="green"  subtitle="open across team" />
-            <KPICard label="Unassigned"    value={unassigned?.issues ?? 0} icon={AlertTriangle} color="yellow" subtitle="need an owner" />
-            <KPICard label="Blocked"       value={totalBlocked}          icon={AlertTriangle} color="red"    subtitle="blocked issues" />
+            <KPICard label="Miembros del equipo" value={assignedUsers.length}    icon={Users}         color="blue"   subtitle="con issues abiertos" />
+            <KPICard label="Issues totales"       value={data?.total_issues}      icon={Users}         color="green"  subtitle="abiertos en el equipo" />
+            <KPICard label="Sin asignar"          value={unassigned?.issues ?? 0} icon={AlertTriangle} color="yellow" subtitle="sin responsable" />
+            <KPICard label="Bloqueados"           value={totalBlocked}            icon={AlertTriangle} color="red"    subtitle="issues bloqueados" />
           </>
         )}
       </div>
@@ -121,7 +120,7 @@ export default function TeamLoad() {
       {/* Horizontal bar chart */}
       {isLoading ? <ChartSkeleton height="h-64" /> : assignedUsers.length > 0 && (
         <div className="card border border-border">
-          <p className="card-title">Issues per Team Member</p>
+          <p className="card-title">Issues por miembro del equipo</p>
           <TeamBarChart users={assignedUsers} />
         </div>
       )}
@@ -129,8 +128,8 @@ export default function TeamLoad() {
       {/* User cards grid */}
       <div>
         <h2 className="text-sm font-semibold text-text-primary mb-4">
-          Team Detail
-          {!isLoading && <span className="text-text-muted font-normal ml-2">({assignedUsers.length} members)</span>}
+          Detalle del equipo
+          {!isLoading && <span className="text-text-muted font-normal ml-2">({assignedUsers.length} miembros)</span>}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {isLoading ? (
@@ -160,10 +159,10 @@ export default function TeamLoad() {
           <AlertTriangle size={20} className="text-accent-yellow flex-shrink-0" />
           <div>
             <p className="text-sm font-semibold text-text-primary">
-              {unassigned.issues} unassigned issue{unassigned.issues > 1 ? 's' : ''}
+              {unassigned.issues} issue{unassigned.issues > 1 ? 's' : ''} sin asignar
             </p>
             <p className="text-xs text-text-muted">
-              {unassigned.story_points} story points with no owner — assign them in Jira to improve tracking.
+              {unassigned.story_points} story points sin responsable — asígnalos en Jira para mejorar el seguimiento.
             </p>
           </div>
         </div>

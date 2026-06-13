@@ -251,6 +251,126 @@ TASKS_BY_PROJECT = {
     ],
 }
 
+# ── Step 8 data: new boards, sprints and issues ────────────────────────────────
+
+NEW_BOARDS = [
+    {"project": "SCRUM", "name": "MDA QA Board",      "type": "scrum"},
+    {"project": "SCRUM", "name": "MDA Kanban Board",  "type": "scrum"},
+    {"project": "CRM",   "name": "CRM Support Board", "type": "scrum"},
+    {"project": "INF",   "name": "INF DevOps Board",  "type": "scrum"},
+    {"project": "INF",   "name": "INF Security Board","type": "scrum"},
+]
+
+NEW_SPRINT_CONFIGS = {
+    "MDA QA Board": [
+        {"name": "QA Sprint 1",          "weeks_ago": 4, "duration": 2, "state": "closed", "done_count": 5, "assign": 8},
+        {"name": "QA Sprint 2",          "weeks_ago": 2, "duration": 2, "state": "closed", "done_count": 7, "assign": 10},
+        {
+            "name": "QA Sprint 3 - Active",
+            "weeks_ago": 0, "duration": 2, "state": "active", "assign": 12,
+            "distribution": {"Done": 3, "In Progress": 5, "In Review": 2, "To Do": 2},
+        },
+    ],
+    "MDA Kanban Board": [
+        {"name": "Kanban Sprint 1",         "weeks_ago": 4, "duration": 2, "state": "closed", "done_count": 4, "assign": 8},
+        {
+            "name": "Kanban Sprint 2 - Active",
+            "weeks_ago": 0, "duration": 2, "state": "active", "assign": 10,
+            "distribution": {"Done": 2, "In Progress": 4, "In Review": 2, "To Do": 2},
+        },
+    ],
+    "CRM Support Board": [
+        {"name": "Support Sprint 1",        "weeks_ago": 4, "duration": 2, "state": "closed", "done_count": 6, "assign": 10},
+        {
+            "name": "Support Sprint 2 - Active",
+            "weeks_ago": 0, "duration": 2, "state": "active", "assign": 12,
+            "distribution": {"Done": 4, "In Progress": 5, "In Review": 1, "To Do": 2},
+        },
+    ],
+    "INF DevOps Board": [
+        {"name": "DevOps Sprint 1",         "weeks_ago": 4, "duration": 2, "state": "closed", "done_count": 5, "assign": 8},
+        {
+            "name": "DevOps Sprint 2 - Active",
+            "weeks_ago": 0, "duration": 2, "state": "active", "assign": 10,
+            "distribution": {"Done": 2, "In Progress": 4, "In Review": 2, "To Do": 2},
+        },
+        {"name": "DevOps Sprint 3 - Future", "weeks_from_now": 2, "duration": 2, "state": "future"},
+    ],
+    "INF Security Board": [
+        {"name": "Security Sprint 1 - Future", "weeks_from_now": 2, "duration": 2, "state": "future"},
+    ],
+}
+
+NEW_BOARD_ISSUES = {
+    "MDA QA Board": [
+        ("Automated regression tests for login flow",              "Story", 3),
+        ("QA checklist for dashboard metrics",                     "Story", 2),
+        ("E2E tests for application form submission",              "Story", 5),
+        ("Cross-browser compatibility: Chrome, Firefox, Safari",   "Task",  3),
+        ("Mobile responsive layout validation on iOS",             "Task",  2),
+        ("Bug: upload widget crashes on Firefox 120",              "Bug",   2),
+        ("Regression suite for password reset flow",               "Story", 3),
+        ("Load test: 200 concurrent users on login page",          "Task",  5),
+        ("QA sign-off checklist for Sprint 3 release",             "Task",  1),
+        ("Accessibility audit WCAG 2.1 AA compliance",             "Story", 3),
+        ("Test notification badge count on mobile",                "Task",  2),
+        ("Bug: PDF export missing student ID field",               "Bug",   2),
+        ("Smoke tests for course enrollment workflow",             "Story", 3),
+        ("Performance: API response time under sustained load",    "Task",  3),
+        ("Security scan: OWASP Top 10 checklist",                  "Task",  5),
+    ],
+    "MDA Kanban Board": [
+        ("Refactor authentication module to use JWT",              "Story", 5),
+        ("Update API documentation for v2 endpoints",             "Task",  2),
+        ("Fix race condition in concurrent session handling",      "Bug",   3),
+        ("Improve dashboard load time under 2 seconds",           "Story", 5),
+        ("Code review process improvement guide",                  "Task",  1),
+        ("Upgrade Node.js to v20 LTS",                            "Task",  2),
+        ("Add pagination to student list endpoint",               "Story", 3),
+        ("Fix memory leak in WebSocket connection handler",       "Bug",   3),
+        ("Developer onboarding documentation",                    "Task",  2),
+        ("Implement request rate limiting middleware",             "Story", 3),
+    ],
+    "CRM Support Board": [
+        ("Triage: lead import failed for 50 contacts",            "Bug",   2),
+        ("Support: reset password for locked accounts",           "Task",  1),
+        ("Bug: email campaign sent to unsubscribed users",        "Bug",   3),
+        ("Investigate: webhook not firing on lead Won",           "Task",  2),
+        ("Fix: CSV export truncates notes at 255 chars",          "Bug",   2),
+        ("Support escalation: duplicate leads after import",      "Bug",   3),
+        ("Hotfix: SLA timer not pausing on weekends",             "Bug",   2),
+        ("Investigate memory spike in lead scoring service",      "Task",  3),
+        ("Fix: report date range off by 1 day due to timezone",   "Bug",   2),
+        ("Document workaround for Firefox drag-drop issue",       "Task",  1),
+        ("Emergency patch: payment calculation rounding error",   "Bug",   3),
+        ("Support: restore accidentally deleted CRM contacts",    "Task",  2),
+    ],
+    "INF DevOps Board": [
+        ("Set up ArgoCD GitOps workflow for staging",             "Story", 5),
+        ("Configure Prometheus alerts for pod CPU above 80%",     "Task",  3),
+        ("Fix: CI pipeline intermittent failure on parallel runs","Bug",   3),
+        ("Deploy Redis cluster with sentinel failover",           "Story", 5),
+        ("Implement blue-green deployment for API service",       "Story", 8),
+        ("Rotate all AWS IAM access keys",                        "Task",  2),
+        ("Fix: CDN cache not invalidated after deploy",           "Bug",   2),
+        ("Upgrade Terraform modules to AWS provider 5.x",         "Task",  3),
+        ("Set up k6 load testing in CI pipeline",                 "Story", 5),
+        ("Configure WAF rules for SQL injection attacks",         "Task",  3),
+    ],
+    "INF Security Board": [
+        ("Implement SOC2 audit logging for all API calls",        "Story", 8),
+        ("Security hardening: disable unused EC2 ports",          "Task",  3),
+        ("SAST scan integration in GitHub Actions CI",            "Story", 5),
+        ("Penetration test: API authentication endpoints",        "Story", 8),
+        ("Configure secrets rotation with HashiCorp Vault",       "Story", 5),
+        ("Fix: Vault token renewal race condition causes 401s",   "Bug",   3),
+        ("WAF rule tuning: reduce false positives",               "Task",  3),
+        ("GDPR compliance audit: data retention policies",        "Task",  2),
+        ("Container image vulnerability scanning pipeline",       "Story", 5),
+        ("Incident response runbook v2",                          "Task",  2),
+    ],
+}
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def sp_field() -> str:
@@ -678,6 +798,232 @@ def step_sprints(story_keys: dict, bug_keys: dict, task_keys: dict) -> dict:
     return sprint_summary
 
 
+# ── Step 8: New boards & sprints ───────────────────────────────────────────────
+
+def _board_id_by_name(project_key: str, name: str) -> int | None:
+    """Return board ID if a board with this exact name exists in the project."""
+    try:
+        for b in client.get_boards(project_key):
+            if b.get("name", "").strip().lower() == name.strip().lower():
+                return b["id"]
+    except Exception:
+        pass
+    return None
+
+
+def _sprint_exists(board_id: int, sprint_name: str) -> bool:
+    """Return True if a sprint with this name already exists on the board."""
+    try:
+        for s in client.get_sprints(board_id):
+            if s.get("name", "").strip().lower() == sprint_name.strip().lower():
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _create_filter(project_key: str, board_name: str) -> int:
+    """Create a saved JQL filter and return its ID."""
+    # Try loggedin first; fall back to no sharePermissions (private) if denied
+    for share in ([{"type": "loggedin"}], []):
+        try:
+            payload = {
+                "name": f"Seed: {board_name}",
+                "jql": f"project = {project_key} ORDER BY created DESC",
+                "sharePermissions": share,
+                "editPermissions": [],
+            }
+            result = client._post("/rest/api/3/filter", payload)
+            return result["id"]
+        except Exception as e:
+            if share:
+                console.print(f"    [dim]Filter share={share[0]['type']} failed, retrying private[/dim]")
+            else:
+                raise e
+    raise RuntimeError("Could not create filter")
+
+
+def _get_or_create_board(project_key: str, name: str, board_type: str) -> tuple[int, bool]:
+    """Return (board_id, is_new). Creates board only if name doesn't exist."""
+    existing = _board_id_by_name(project_key, name)
+    if existing:
+        console.print(f"  [yellow]~[/yellow] '{name}' already exists (id={existing})")
+        return existing, False
+
+    try:
+        filter_id = _create_filter(project_key, name)
+        time.sleep(SLEEP)
+        payload = {
+            "name": name,
+            "type": board_type,
+            "filterId": filter_id,
+            "location": {"projectKeyOrId": project_key, "type": "project"},
+        }
+        result = client._post("/rest/agile/1.0/board", payload)
+        bid = result["id"]
+        console.print(f"  [green]✓[/green] Created board '{name}' (id={bid})")
+        return bid, True
+    except Exception as e:
+        console.print(f"  [red]✗[/red] Cannot create board '{name}': {e}")
+        raise
+
+
+def _create_issues(board_name: str, project_key: str) -> list[str]:
+    """Create all issues for a board; return list of created issue keys."""
+    sp = sp_field()
+    keys: list[str] = []
+    for summary, issue_type, pts in NEW_BOARD_ISSUES.get(board_name, []):
+        try:
+            result = client._post("/rest/api/3/issue", {"fields": {
+                "project": {"key": project_key},
+                "summary": summary,
+                "issuetype": {"name": issue_type},
+                "assignee": {"accountId": ADMIN_ACCOUNT_ID},
+            }})
+            key = result["key"]
+            keys.append(key)
+            try:
+                client._put(f"/rest/api/3/issue/{key}", {"fields": {sp: pts}})
+            except Exception:
+                pass
+            try:
+                client._put(f"/rest/api/3/issue/{key}", {"fields": {"timetracking": {
+                    "originalEstimate": f"{pts}h",
+                    "remainingEstimate": f"{pts}h",
+                }}})
+            except Exception as te:
+                console.print(f"    [dim]timetracking {key}: {te}[/dim]")
+            console.print(f"  [green]✓[/green] {key} ({pts}SP) {summary[:55]}")
+            time.sleep(SLEEP)
+        except Exception as e:
+            console.print(f"  [red]✗[/red] Issue '{summary[:45]}': {e}")
+    return keys
+
+
+def step_new_boards_and_sprints() -> list[dict]:
+    """Create new boards with sprints and issues. Idempotent: skips existing."""
+    console.rule("[bold blue]Step 8: New boards & sprints")
+    rows: list[dict] = []
+
+    for board_cfg in NEW_BOARDS:
+        project_key = board_cfg["project"]
+        board_name  = board_cfg["name"]
+        board_type  = board_cfg["type"]
+
+        console.print(f"\n[bold cyan]{board_name}[/bold cyan] ({project_key})")
+
+        try:
+            board_id, is_new = _get_or_create_board(project_key, board_name, board_type)
+        except Exception:
+            continue
+        time.sleep(SLEEP)
+
+        # Create issues only for freshly created boards (idempotency)
+        issue_pool: list[str] = []
+        if is_new:
+            console.print("  Creating issues…")
+            issue_pool = _create_issues(board_name, project_key)
+            random.shuffle(issue_pool)
+            console.print(f"  → {len(issue_pool)} issues created")
+
+        cursor = 0
+        for scfg in NEW_SPRINT_CONFIGS.get(board_name, []):
+            sprint_name = scfg["name"]
+
+            if _sprint_exists(board_id, sprint_name):
+                console.print(f"  [yellow]~[/yellow] Sprint '{sprint_name}' already exists, skipping")
+                continue
+
+            now = now_utc()
+            if "weeks_from_now" in scfg:
+                start = now + timedelta(weeks=scfg["weeks_from_now"])
+            else:
+                start = now - timedelta(weeks=scfg["weeks_ago"] + scfg["duration"])
+            end = start + timedelta(weeks=scfg["duration"])
+
+            try:
+                sprint_obj = client.create_sprint(
+                    board_id=board_id,
+                    name=sprint_name,
+                    start_date=utc_iso(start),
+                    end_date=utc_iso(end),
+                )
+                sprint_id = sprint_obj["id"]
+                time.sleep(SLEEP)
+
+                state = scfg["state"]
+
+                if state == "future":
+                    # Leave in future state — no issues, no activation
+                    console.print(f"  [green]✓[/green] '{sprint_name}' (future)")
+                    rows.append({"board": board_name, "sprint": sprint_name, "state": "future", "issues": 0})
+                    continue
+
+                # Assign issues to sprint
+                assign_n = scfg.get("assign", 0)
+                chunk = issue_pool[cursor: cursor + assign_n]
+                cursor += assign_n
+                if chunk:
+                    client.move_issues_to_sprint(sprint_id, chunk)
+                    time.sleep(SLEEP)
+
+                if state == "closed":
+                    client.update_sprint(sprint_id, {
+                        "name": sprint_name, "state": "active",
+                        "startDate": utc_iso(start), "endDate": utc_iso(end),
+                    })
+                    time.sleep(SLEEP)
+                    done_n = scfg.get("done_count", 0)
+                    for key in chunk[:done_n]:
+                        transition_to(key, "Done")
+                        time.sleep(0.2)
+                    client.update_sprint(sprint_id, {
+                        "name": sprint_name, "state": "closed",
+                        "startDate": utc_iso(start), "endDate": utc_iso(end),
+                        "completeDate": utc_iso(end),
+                    })
+                    time.sleep(SLEEP)
+                    console.print(f"  [green]✓[/green] '{sprint_name}' (closed — {done_n}/{len(chunk)} done)")
+                    rows.append({"board": board_name, "sprint": sprint_name, "state": "closed", "issues": len(chunk)})
+
+                elif state == "active":
+                    a_start = now - timedelta(days=1)
+                    a_end   = now + timedelta(days=13)
+                    client.update_sprint(sprint_id, {
+                        "name": sprint_name, "state": "active",
+                        "startDate": utc_iso(a_start), "endDate": utc_iso(a_end),
+                    })
+                    time.sleep(SLEEP)
+                    dist = scfg.get("distribution", {})
+                    idx = 0
+                    for status, count in dist.items():
+                        if status == "To Do":
+                            idx += count
+                            continue
+                        for key in list(chunk)[idx: idx + count]:
+                            transition_to(key, status)
+                            time.sleep(0.2)
+                        idx += count
+                    console.print(f"  [green]✓[/green] '{sprint_name}' (active — {len(chunk)} issues)")
+                    rows.append({"board": board_name, "sprint": sprint_name, "state": "active", "issues": len(chunk)})
+
+            except Exception as e:
+                console.print(f"  [red]✗[/red] Sprint '{sprint_name}': {e}")
+
+    # Summary table
+    if rows:
+        t = Table(title="New boards & sprints")
+        t.add_column("Board",  style="cyan")
+        t.add_column("Sprint")
+        t.add_column("State",  style="yellow")
+        t.add_column("Issues", justify="right", style="magenta")
+        for r in rows:
+            t.add_row(r["board"], r["sprint"], r["state"], str(r["issues"]))
+        console.print(t)
+
+    return rows
+
+
 # ── Summary ────────────────────────────────────────────────────────────────────
 
 def print_summary(
@@ -727,4 +1073,5 @@ if __name__ == "__main__":
     bug_keys = step_bugs(project_keys)
     task_keys = step_tasks(project_keys)
     sprint_summary = step_sprints(story_keys, bug_keys, task_keys)
+    step_new_boards_and_sprints()
     print_summary(project_keys, epic_keys, story_keys, bug_keys, task_keys, sprint_summary)

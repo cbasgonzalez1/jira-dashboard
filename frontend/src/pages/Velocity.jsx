@@ -29,7 +29,7 @@ export default function Velocity() {
     ? Math.round(closed.reduce((s, sp) => s + (sp.committed > 0 ? sp.completed / sp.committed : 0), 0) / closed.length * 100)
     : 0
 
-  if (isError) return <ErrorCard message="Failed to load velocity data." onRetry={refetch} />
+  if (isError) return <ErrorCard message="Error al cargar datos de velocidad." onRetry={refetch} />
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -38,32 +38,32 @@ export default function Velocity() {
         {isLoading ? Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />) : (
           <>
             <KPICard
-              label="Avg Velocity"
+              label="Velocidad media"
               value={`${data?.avg_velocity ?? 0} pts`}
               icon={Zap}
               color="green"
-              subtitle="last 3 closed sprints"
+              subtitle="últimos 3 sprints cerrados"
             />
             <KPICard
-              label="Best Sprint"
+              label="Mejor sprint"
               value={`${bestSprint?.completed ?? 0} pts`}
               icon={Target}
               color="blue"
               subtitle={bestSprint?.name?.replace(/^(SCRUM|CRM|INF)\s/, '') || '—'}
             />
             <KPICard
-              label="Trend"
+              label="Tendencia"
               value={trend === null ? '—' : trend > 0 ? `+${trend}` : `${trend}`}
               icon={trend === null ? Minus : trend > 0 ? TrendingUp : TrendingDown}
               color={trend === null ? 'blue' : trend > 0 ? 'green' : 'red'}
-              subtitle="vs previous sprint"
+              subtitle="vs sprint anterior"
             />
             <KPICard
-              label="Predictability"
+              label="Predictibilidad"
               value={`${predictability}%`}
               icon={Target}
               color={predictability >= 80 ? 'green' : predictability >= 60 ? 'yellow' : 'red'}
-              subtitle="committed vs completed"
+              subtitle="comprometido vs completado"
             />
           </>
         )}
@@ -72,7 +72,7 @@ export default function Velocity() {
       {/* Chart */}
       {isLoading ? <ChartSkeleton height="h-80" /> : (
         <div className="card border border-border">
-          <p className="card-title">Sprint Velocity — {project}</p>
+          <p className="card-title">Velocidad del sprint — {project}</p>
           <VelocityChart sprints={sprints} avgVelocity={data?.avg_velocity} />
         </div>
       )}
@@ -80,12 +80,12 @@ export default function Velocity() {
       {/* Table */}
       {!isLoading && sprints.length > 0 && (
         <div className="card border border-border">
-          <p className="card-title">Sprint Breakdown</p>
+          <p className="card-title">Detalle de sprints</p>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  {['Sprint', 'State', 'Committed', 'Completed', 'Completion'].map(h => (
+                  {['Sprint', 'Estado', 'Comprometido', 'Completado', 'Completitud'].map(h => (
                     <th key={h} className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">{h}</th>
                   ))}
                 </tr>

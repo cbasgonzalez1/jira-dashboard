@@ -5,7 +5,7 @@ import { useProject } from '../App.jsx'
 import BurndownChart from '../components/charts/BurndownChart.jsx'
 import KPICard from '../components/ui/KPICard.jsx'
 import { ChartSkeleton, KPISkeleton, ErrorCard } from '../components/ui/LoadingSpinner.jsx'
-import { differenceInDays, parseISO, isAfter } from 'date-fns'
+import { differenceInDays, parseISO } from 'date-fns'
 import clsx from 'clsx'
 
 function ProjectionBadge({ data }) {
@@ -19,7 +19,7 @@ function ProjectionBadge({ data }) {
       'card border flex flex-col gap-3',
       onTrack ? 'border-accent-green/30' : 'border-accent-red/30'
     )}>
-      <p className="card-title">Projection</p>
+      <p className="card-title">Proyección</p>
       <div className="flex items-center gap-3">
         {onTrack
           ? <CheckCircle size={24} className="text-accent-green flex-shrink-0" />
@@ -27,15 +27,15 @@ function ProjectionBadge({ data }) {
         }
         <div>
           <p className={clsx('text-sm font-semibold', onTrack ? 'text-accent-green' : 'text-accent-red')}>
-            {onTrack ? 'On Track' : 'At Risk'}
+            {onTrack ? 'En plazo' : 'En riesgo'}
           </p>
           <p className="text-xs text-text-muted">
-            {daysLeft > 0 ? `${daysLeft} days remaining` : 'Sprint ended'}
+            {daysLeft > 0 ? `${daysLeft} días restantes` : 'Sprint finalizado'}
           </p>
         </div>
       </div>
       <div className="text-xs text-text-muted">
-        {data.remaining_pts} pts remaining of {data.total_pts} total
+        {data.remaining_pts} pts restantes de {data.total_pts} total
       </div>
     </div>
   )
@@ -50,14 +50,14 @@ export default function Burndown() {
     refetchInterval: 60_000,
   })
 
-  if (isError) return <ErrorCard message="Failed to load burndown data." onRetry={refetch} />
+  if (isError) return <ErrorCard message="Error al cargar datos del burndown." onRetry={refetch} />
 
   if (!isLoading && !data?.sprint) {
     return (
       <div className="card border border-border flex flex-col items-center gap-3 py-16 text-center">
         <span className="text-4xl">🏁</span>
-        <h3 className="text-text-primary font-semibold">No active sprint</h3>
-        <p className="text-text-muted text-sm">Start a sprint in Jira to see the burndown chart.</p>
+        <h3 className="text-text-primary font-semibold">Sin sprint activo</h3>
+        <p className="text-text-muted text-sm">Inicia un sprint en Jira para ver el burndown.</p>
       </div>
     )
   }
@@ -72,10 +72,10 @@ export default function Burndown() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading ? Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />) : (
           <>
-            <KPICard label="Total Points"     value={data?.total_pts}     icon={Clock}        color="blue"   subtitle={data?.sprint} />
-            <KPICard label="Done"             value={data?.done_pts}      icon={CheckCircle}  color="green"  subtitle={`${completionPct}% complete`} />
-            <KPICard label="Remaining"        value={data?.remaining_pts} icon={AlertCircle}  color={completionPct < 50 ? 'red' : 'yellow'} subtitle="story points" />
-            <KPICard label="Sprint Ends"      value={data?.sprint_end}    icon={Calendar}     color="purple" subtitle="target date" />
+            <KPICard label="Puntos totales"  value={data?.total_pts}     icon={Clock}        color="blue"   subtitle={data?.sprint} />
+            <KPICard label="Completados"     value={data?.done_pts}      icon={CheckCircle}  color="green"  subtitle={`${completionPct}% completado`} />
+            <KPICard label="Restantes"       value={data?.remaining_pts} icon={AlertCircle}  color={completionPct < 50 ? 'red' : 'yellow'} subtitle="story points" />
+            <KPICard label="Fin del sprint"  value={data?.sprint_end}    icon={Calendar}     color="purple" subtitle="fecha objetivo" />
           </>
         )}
       </div>
@@ -92,7 +92,7 @@ export default function Burndown() {
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-6 border-t-2 border-accent-blue inline-block" />
-                Actual
+                Real
               </span>
             </div>
           </div>
@@ -105,10 +105,10 @@ export default function Burndown() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ProjectionBadge data={data} />
           <div className="card border border-border flex flex-col gap-3">
-            <p className="card-title">Completion Progress</p>
+            <p className="card-title">Progreso de completitud</p>
             <div className="flex items-end gap-3">
               <span className="text-4xl font-bold text-text-primary tabular-nums">{completionPct}%</span>
-              <span className="text-text-muted text-sm mb-1">done</span>
+              <span className="text-text-muted text-sm mb-1">completado</span>
             </div>
             <div className="h-2 bg-bg-primary rounded-full overflow-hidden">
               <div
@@ -120,8 +120,8 @@ export default function Burndown() {
               />
             </div>
             <div className="flex justify-between text-xs text-text-muted">
-              <span>{data?.done_pts} pts done</span>
-              <span>{data?.remaining_pts} pts left</span>
+              <span>{data?.done_pts} pts completados</span>
+              <span>{data?.remaining_pts} pts restantes</span>
             </div>
           </div>
         </div>

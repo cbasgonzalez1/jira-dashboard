@@ -195,6 +195,9 @@ class JiraClient:
             start += len(values)
         return all_sprints
 
+    def get_sprint_issues(self, sprint_id: int) -> list:
+        return self.get_sprint_issues_by_jql(sprint_id)
+
     def get_sprint_issues_by_jql(self, sprint_id: int) -> list:
         return self.search_issues(
             jql=f"sprint = {sprint_id}",

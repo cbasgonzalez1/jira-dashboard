@@ -3,7 +3,6 @@ import { AlertTriangle, TrendingUp, UserX, Layers, Activity } from 'lucide-react
 import { getOverview } from '../api/jiraApi.js'
 import KPICard from '../components/ui/KPICard.jsx'
 import { KPISkeleton, ErrorCard } from '../components/ui/LoadingSpinner.jsx'
-import { useProject } from '../App.jsx'
 import clsx from 'clsx'
 
 function ProjectCard({ proj }) {
@@ -21,27 +20,27 @@ function ProjectCard({ proj }) {
           </div>
           <h3 className="text-sm font-semibold text-text-primary mt-1">{proj.name}</h3>
         </div>
-        <span className="text-xs text-text-muted">{proj.open_issues} open</span>
+        <span className="text-xs text-text-muted">{proj.open_issues} abiertas</span>
       </div>
 
       {/* Sprint progress */}
       <div>
         <div className="flex justify-between text-xs text-text-muted mb-1.5">
-          <span>Sprint progress</span>
+          <span>Progreso del sprint</span>
           <span>{proj.sprint_done}/{proj.sprint_total} issues</span>
         </div>
         <div className="h-1.5 bg-bg-primary rounded-full overflow-hidden">
           <div className={clsx('h-full rounded-full transition-all', barColor)} style={{ width: `${pct}%` }} />
         </div>
-        <div className="text-xs text-text-muted mt-1">{pct}% complete</div>
+        <div className="text-xs text-text-muted mt-1">{pct}% completado</div>
       </div>
 
       {/* Mini stats */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: 'Critical', value: proj.critical_bugs, color: 'text-accent-red' },
-          { label: 'Unassigned', value: proj.unassigned, color: 'text-accent-yellow' },
-          { label: 'Epics', value: proj.epics_in_progress, color: 'text-accent-purple' },
+          { label: 'Críticos',    value: proj.critical_bugs,     color: 'text-accent-red' },
+          { label: 'Sin asignar', value: proj.unassigned,        color: 'text-accent-yellow' },
+          { label: 'Épics',       value: proj.epics_in_progress, color: 'text-accent-purple' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-bg-primary rounded-lg p-2 text-center">
             <div className={clsx('text-lg font-bold tabular-nums', color)}>{value}</div>
@@ -52,10 +51,14 @@ function ProjectCard({ proj }) {
 
       {/* Quick links */}
       <div className="flex gap-2 pt-1 border-t border-border">
-        {['Velocity', 'Burndown', 'Team'].map(label => (
+        {[
+          { label: 'Velocidad', href: '/velocity' },
+          { label: 'Burndown',  href: '/burndown' },
+          { label: 'Equipo',    href: '/team' },
+        ].map(({ label, href }) => (
           <a
             key={label}
-            href={`/${label.toLowerCase()}`}
+            href={href}
             className="flex-1 text-center text-xs py-1.5 rounded-lg bg-bg-primary text-text-secondary hover:text-accent-blue hover:bg-accent-blue/5 transition-colors border border-border"
           >
             {label}
@@ -73,7 +76,7 @@ export default function Overview() {
     refetchInterval: 60_000,
   })
 
-  if (isError) return <ErrorCard message="Failed to load overview data." onRetry={refetch} />
+  if (isError) return <ErrorCard message="Error al cargar los datos del resumen." onRetry={refetch} />
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -83,19 +86,19 @@ export default function Overview() {
           Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />)
         ) : (
           <>
-            <KPICard label="Open Issues"       value={data?.total_open}              icon={Activity}      color="blue"   subtitle="across all projects" />
-            <KPICard label="Critical Bugs"     value={data?.total_critical_bugs}     icon={AlertTriangle} color="red"    subtitle="require immediate action" />
-            <KPICard label="Unassigned"        value={data?.total_unassigned}        icon={UserX}         color="yellow" subtitle="no owner assigned" />
-            <KPICard label="Epics In Progress" value={data?.total_epics_in_progress} icon={Layers}        color="purple" subtitle="active initiatives" />
+            <KPICard label="Issues abiertas"    value={data?.total_open}              icon={Activity}      color="blue"   subtitle="en todos los proyectos" />
+            <KPICard label="Bugs críticos"       value={data?.total_critical_bugs}     icon={AlertTriangle} color="red"    subtitle="requieren acción inmediata" />
+            <KPICard label="Sin asignar"         value={data?.total_unassigned}        icon={UserX}         color="yellow" subtitle="sin responsable" />
+            <KPICard label="Épics en curso"      value={data?.total_epics_in_progress} icon={Layers}        color="purple" subtitle="iniciativas activas" />
           </>
         )}
       </div>
 
       {/* Section header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-text-primary">Projects</h2>
+        <h2 className="text-sm font-semibold text-text-primary">Proyectos</h2>
         {!isLoading && (
-          <span className="text-xs text-text-muted">{data?.active_projects} active</span>
+          <span className="text-xs text-text-muted">{data?.active_projects} activos</span>
         )}
       </div>
 

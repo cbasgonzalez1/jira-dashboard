@@ -48,7 +48,7 @@ export default function Backlog() {
     refetchInterval: 60_000,
   })
 
-  if (isError) return <ErrorCard message="Failed to load backlog data." onRetry={refetch} />
+  if (isError) return <ErrorCard message="Error al cargar datos del backlog." onRetry={refetch} />
 
   const estimatedPct = data?.total > 0
     ? Math.round((data.total - data.unestimated) / data.total * 100)
@@ -60,10 +60,10 @@ export default function Backlog() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading ? Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />) : (
           <>
-            <KPICard label="Backlog Size"    value={data?.total}        icon={AlertTriangle} color="blue"   subtitle="unplanned issues" />
-            <KPICard label="Unestimated"     value={data?.unestimated}  icon={AlertTriangle} color={data?.unestimated > data?.total * 0.3 ? 'red' : 'yellow'} subtitle="no story points" />
-            <KPICard label="Estimated"       value={data?.total - (data?.unestimated ?? 0)} icon={AlertTriangle} color="green" subtitle={`${estimatedPct}% have points`} />
-            <KPICard label="Types"           value={Object.keys(data?.by_type ?? {}).length} icon={AlertTriangle} color="purple" subtitle="issue categories" />
+            <KPICard label="Tamaño del backlog" value={data?.total}        icon={AlertTriangle} color="blue"   subtitle="issues sin planificar" />
+            <KPICard label="Sin estimación"      value={data?.unestimated}  icon={AlertTriangle} color={data?.unestimated > data?.total * 0.3 ? 'red' : 'yellow'} subtitle="sin story points" />
+            <KPICard label="Estimadas"           value={data?.total - (data?.unestimated ?? 0)} icon={AlertTriangle} color="green" subtitle={`${estimatedPct}% tienen puntos`} />
+            <KPICard label="Tipos"               value={Object.keys(data?.by_type ?? {}).length} icon={AlertTriangle} color="purple" subtitle="categorías de issues" />
           </>
         )}
       </div>
@@ -76,9 +76,9 @@ export default function Backlog() {
           ))
         ) : (
           <>
-            <DonutChart title="By Issue Type"    data={data?.by_type     ?? {}} />
-            <DonutChart title="By Priority"      data={data?.by_priority ?? {}} />
-            <DonutChart title="By Status"        data={data?.by_status   ?? {}} />
+            <DonutChart title="Por tipo de issue" data={data?.by_type     ?? {}} />
+            <DonutChart title="Por prioridad"     data={data?.by_priority ?? {}} />
+            <DonutChart title="Por estado"        data={data?.by_status   ?? {}} />
           </>
         )}
       </div>
@@ -86,21 +86,21 @@ export default function Backlog() {
       {/* Bar breakdown tables */}
       {!isLoading && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <StatsTable title="Issue Types"  data={data?.by_type}     colorFn={n => TYPE_COLOR[n]     || 'bg-accent-blue'} />
-          <StatsTable title="Priorities"   data={data?.by_priority} colorFn={n => PRIORITY_COLOR[n] || 'bg-accent-blue'} />
-          <StatsTable title="Statuses"     data={data?.by_status}   colorFn={n => STATUS_COLOR[n]   || 'bg-accent-blue'} />
+          <StatsTable title="Tipos de issue" data={data?.by_type}     colorFn={n => TYPE_COLOR[n]     || 'bg-accent-blue'} />
+          <StatsTable title="Prioridades"    data={data?.by_priority} colorFn={n => PRIORITY_COLOR[n] || 'bg-accent-blue'} />
+          <StatsTable title="Estados"        data={data?.by_status}   colorFn={n => STATUS_COLOR[n]   || 'bg-accent-blue'} />
         </div>
       )}
 
       {/* Estimation health */}
       {!isLoading && (
         <div className="card border border-border">
-          <p className="card-title">Estimation Health</p>
+          <p className="card-title">Salud de estimaciones</p>
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="flex justify-between text-xs text-text-muted mb-2">
-                <span>Estimated ({data?.total - data?.unestimated} issues)</span>
-                <span>Unestimated ({data?.unestimated} issues)</span>
+                <span>Estimadas ({(data?.total ?? 0) - (data?.unestimated ?? 0)} issues)</span>
+                <span>Sin estimar ({data?.unestimated ?? 0} issues)</span>
               </div>
               <div className="h-4 bg-bg-primary rounded-full overflow-hidden flex">
                 <div

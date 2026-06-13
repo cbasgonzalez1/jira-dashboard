@@ -2,15 +2,16 @@ import { useLocation } from 'react-router-dom'
 import { RefreshCw, Calendar } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { useProject } from '../../App.jsx'
 
 const PAGE_TITLES = {
-  '/':          { title: 'Overview',          subtitle: 'All projects at a glance' },
-  '/velocity':  { title: 'Velocity',          subtitle: 'Sprint committed vs completed' },
-  '/burndown':  { title: 'Burndown',          subtitle: 'Active sprint progress' },
-  '/backlog':   { title: 'Backlog',           subtitle: 'Unplanned issue distribution' },
-  '/team':      { title: 'Team Load',         subtitle: 'Workload per team member' },
-  '/sprint':    { title: 'Sprint Dashboard',  subtitle: 'Estado, capacidad y desviaciones del sprint' },
+  '/':          { title: 'Resumen',            subtitle: 'Vista global de todos los proyectos' },
+  '/velocity':  { title: 'Velocidad',          subtitle: 'Sprints comprometidos vs completados' },
+  '/burndown':  { title: 'Burndown',           subtitle: 'Progreso del sprint activo' },
+  '/backlog':   { title: 'Backlog',            subtitle: 'Distribución de issues sin planificar' },
+  '/team':      { title: 'Carga del Equipo',   subtitle: 'Carga de trabajo por miembro' },
+  '/sprint':    { title: 'Sprint Dashboard',   subtitle: 'Estado, capacidad y desviaciones del sprint' },
 }
 
 export default function Header() {
@@ -33,7 +34,7 @@ export default function Header() {
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 text-xs text-text-muted">
           <Calendar size={13} />
-          {format(new Date(), 'MMM d, yyyy')}
+          {format(new Date(), "d MMM yyyy", { locale: es })}
         </div>
 
         <div className="h-4 w-px bg-border" />
@@ -45,10 +46,10 @@ export default function Header() {
         <button
           onClick={handleRefresh}
           className="flex items-center gap-1.5 btn btn-ghost text-xs"
-          title="Refresh all data"
+          title="Actualizar datos"
         >
           <RefreshCw size={13} />
-          Refresh
+          Actualizar
         </button>
       </div>
     </header>

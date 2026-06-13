@@ -7,51 +7,68 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 client = JiraClient()
 
-PROJECT_KEYS = ["SCRUM", "CRM", "INF"]
-
 
 def get_overview_data() -> dict:
+    empty = {
+        "projects": [],
+        "total_open": 0,
+        "total_critical_bugs": 0,
+        "total_unassigned": 0,
+        "total_epics_in_progress": 0,
+        "active_projects": 0,
+    }
+
+    try:
+        raw_projects = client.get_all_projects()
+    except Exception:
+        return empty
+
+    if not raw_projects:
+        return empty
+
     projects_data = []
     total_open = 0
     total_critical_bugs = 0
     total_unassigned = 0
     total_epics_in_progress = 0
 
-    for key in PROJECT_KEYS:
+    for proj_meta in raw_projects[:15]:
+        key = proj_meta["key"]
+        proj_name = proj_meta.get("name", key)
         try:
-            proj = client.get_project(key)
+            open_issues = client.search_issues(
+                f'project = {key} AND resolution = Unresolved',
+                fields=["summary", "status", "issuetype"],
+                max_results=200,
+            )
+            sprint_issues = client.search_issues(
+                f'project = {key} AND sprint in openSprints()',
+                fields=["summary", "status", "issuetype"],
+                max_results=200,
+            )
+            sprint_done = [
+                i for i in sprint_issues
+                if (i["fields"].get("status") or {}).get("name") in (
+                    "Done", "Hecho", "Cerrado", "Resuelto", "Closed", "Resolved"
+                )
+            ]
+            critical_bugs = client.search_issues(
+                f'project = {key} AND issuetype = Bug AND priority = Highest AND resolution = Unresolved',
+                fields=["summary", "priority"],
+                max_results=50,
+            )
+            unassigned = client.search_issues(
+                f'project = {key} AND assignee is EMPTY AND resolution = Unresolved',
+                fields=["summary"],
+                max_results=50,
+            )
+            epics_ip = client.search_issues(
+                f'project = {key} AND issuetype = Epic AND status = "In Progress"',
+                fields=["summary", "status"],
+                max_results=20,
+            )
         except Exception:
             continue
-
-        open_issues = client.search_issues(
-            f'project = {key} AND resolution = Unresolved',
-            fields=["summary", "status", "issuetype"],
-            max_results=200,
-        )
-        sprint_issues = client.search_issues(
-            f'project = {key} AND sprint in openSprints()',
-            fields=["summary", "status", "issuetype"],
-            max_results=200,
-        )
-        sprint_done = [
-            i for i in sprint_issues
-            if (i["fields"].get("status") or {}).get("name") == "Done"
-        ]
-        critical_bugs = client.search_issues(
-            f'project = {key} AND issuetype = Bug AND priority = Highest AND resolution = Unresolved',
-            fields=["summary", "priority"],
-            max_results=50,
-        )
-        unassigned = client.search_issues(
-            f'project = {key} AND assignee is EMPTY AND resolution = Unresolved',
-            fields=["summary"],
-            max_results=50,
-        )
-        epics_ip = client.search_issues(
-            f'project = {key} AND issuetype = Epic AND status = "In Progress"',
-            fields=["summary", "status"],
-            max_results=20,
-        )
 
         total_open += len(open_issues)
         total_critical_bugs += len(critical_bugs)
@@ -60,7 +77,7 @@ def get_overview_data() -> dict:
 
         projects_data.append({
             "key": key,
-            "name": proj.get("name", key),
+            "name": proj_name,
             "open_issues": len(open_issues),
             "sprint_total": len(sprint_issues),
             "sprint_done": len(sprint_done),

@@ -4,19 +4,13 @@ import { useProject } from '../../App.jsx'
 import clsx from 'clsx'
 
 const NAV = [
-  { to: '/',          icon: LayoutDashboard, label: 'Overview' },
-  { to: '/velocity',  icon: TrendingUp,      label: 'Velocity' },
+  { to: '/',          icon: LayoutDashboard, label: 'Resumen' },
+  { to: '/velocity',  icon: TrendingUp,      label: 'Velocidad' },
   { to: '/burndown',  icon: Flame,           label: 'Burndown' },
   { to: '/backlog',   icon: ListTodo,        label: 'Backlog' },
-  { to: '/team',      icon: Users,           label: 'Team Load' },
+  { to: '/team',      icon: Users,           label: 'Carga del Equipo' },
   { to: '/sprint',    icon: Kanban,          label: 'Sprint Dashboard' },
 ]
-
-const PROJECT_COLORS = {
-  SCRUM: 'bg-accent-blue',
-  CRM:   'bg-accent-purple',
-  INF:   'bg-accent-green',
-}
 
 export default function Sidebar() {
   const { project, setProject, projects } = useProject()
@@ -55,15 +49,15 @@ export default function Sidebar() {
         ))}
 
         <div className="pt-4">
-          <p className="px-2 py-2 text-xs font-semibold uppercase tracking-widest text-text-muted">Links</p>
+          <p className="px-2 py-2 text-xs font-semibold uppercase tracking-widest text-text-muted">Enlaces</p>
           <a
-            href="https://mda-tfm-sebastian.atlassian.net"
+            href="https://jira.aes.alcatel.fr:8443"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-primary transition-colors"
           >
             <ExternalLink size={16} />
-            Jira Cloud ↗
+            Jira Server ↗
           </a>
           <a
             href="http://localhost:8000/docs"
@@ -79,7 +73,7 @@ export default function Sidebar() {
 
       {/* Project selector */}
       <div className="px-3 py-4 border-t border-border">
-        <p className="px-2 mb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">Project</p>
+        <p className="px-2 mb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">Proyecto</p>
         <div className="space-y-1">
           {projects.map(p => (
             <button
@@ -92,8 +86,8 @@ export default function Sidebar() {
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-primary'
               )}
             >
-              <span className={clsx('w-2 h-2 rounded-full flex-shrink-0', PROJECT_COLORS[p.key] || 'bg-text-muted')} />
-              <span className="font-mono text-xs text-text-muted w-10 flex-shrink-0">{p.key}</span>
+              <span className="w-2 h-2 rounded-full flex-shrink-0 bg-accent-blue" />
+              <span className="font-mono text-xs text-text-muted w-12 flex-shrink-0 truncate">{p.key}</span>
               <span className="truncate">{p.name}</span>
             </button>
           ))}

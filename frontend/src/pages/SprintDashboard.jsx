@@ -222,8 +222,9 @@ export default function SprintDashboard() {
   const data = dataQ.data
 
   // When no sprint is selected yet, fall back to demo data so the UI is populated
-  const isDemo = !data && !dataQ.isFetching && !dataQ.isError
-  const displayData = data ?? (isDemo ? DEMO_DATA : null)
+  const boardHasNoSprints = !!boardId && !sprintsQ.isLoading && sprintsQ.data?.length === 0
+  const isDemo = !boardId && !data && !dataQ.isFetching && !dataQ.isError
+  const displayData = boardHasNoSprints ? null : (data ?? (isDemo ? DEMO_DATA : null))
 
   const kpis = displayData?.kpis ?? {}
   const sprint = displayData?.sprint ?? {}
@@ -343,6 +344,15 @@ export default function SprintDashboard() {
         </div>
       </section>
 
+      {/* No sprints in board */}
+      {boardHasNoSprints && (
+        <div className="card border border-border flex flex-col items-center gap-3 py-12 text-center">
+          <BarChart2 size={36} className="text-text-muted opacity-25" />
+          <p className="text-sm font-medium text-text-secondary">Este board no tiene sprints disponibles</p>
+          <p className="text-xs text-text-muted">Crea sprints en Jira para este board para ver los datos</p>
+        </div>
+      )}
+
       {/* Loading */}
       {dataQ.isFetching && (
         <div className="space-y-4">
@@ -358,14 +368,6 @@ export default function SprintDashboard() {
 
       {displayData && !dataQ.isFetching && (
         <>
-          {/* Demo banner */}
-          {isDemo && (
-            <div className="rounded-lg border border-accent-yellow/30 bg-accent-yellow/5 flex items-center gap-3 px-4 py-3 text-xs text-accent-yellow">
-              <AlertTriangle size={14} className="flex-shrink-0" />
-              <span>Vista previa con datos de ejemplo — selecciona un board y sprint para ver datos reales</span>
-            </div>
-          )}
-
           {/* ── SECTION 2: KPIs ────────────────────────────────────────────── */}
           <section>
             <SectionTitle>Métricas del sprint</SectionTitle>
