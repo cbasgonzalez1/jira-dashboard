@@ -1,9 +1,13 @@
+import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, Query
 from jira_client import JiraClient
+from config import settings
+from constants import DONE_STATUSES, TODO_STATUSES, IN_PROGRESS_STATUSES
 
 router = APIRouter(prefix="/api/sprint-dashboard")
 client = JiraClient()
+logger = logging.getLogger(__name__)
 
 # ── Status map — English + Spanish ────────────────────────────────────────────
 _STATUS_MAP = {
@@ -19,17 +23,18 @@ _STATUS_MAP = {
     "testing": "validation", "qa": "validation",
     "in testing": "validation", "review": "validation",
     "validación": "validation", "en revisión": "validation",
-    # blocked (mapped to in_progress so it counts as work remaining)
+    # blocked (counts as work remaining)
     "blocked": "in_progress", "bloqueado": "in_progress",
-    # done
-    "done": "done", "closed": "done", "resolved": "done",
-    "complete": "done", "completado": "done",
-    "hecho": "done", "resuelto": "done", "cerrado": "done",
+    # done — source of truth is DONE_STATUSES constant
+    **{s: "done" for s in DONE_STATUSES},
 }
 
 
 def _cat(status_name: str) -> str:
-    return _STATUS_MAP.get(status_name.lower().strip(), "in_progress")
+    s = status_name.lower().strip()
+    if s in DONE_STATUSES:
+        return "done"
+    return _STATUS_MAP.get(s, "in_progress")
 
 
 def _h(seconds) -> float:
@@ -60,6 +65,7 @@ def _sp(fields: dict) -> float:
 async def list_projects():
     """All projects accessible to the user via /rest/api/2/project."""
     projects = client.get_all_projects()
+    logger.info(f"list_projects: {len(projects)} projects")
     return sorted(
         [{"key": p["key"], "name": p["name"]} for p in projects],
         key=lambda x: x["name"],
@@ -73,17 +79,18 @@ async def list_boards(project_key: str = Query(None)):
         raw = client.get_boards(project_key)
     else:
         raw = client.get_all_boards(board_type="scrum")
+    logger.info(f"list_boards project_key={project_key}: {len(raw)} boards")
     return [{"id": b["id"], "name": b["name"], "type": b.get("type", "")} for b in raw]
 
 
 @router.get("/sprints/{board_id}")
 async def list_sprints(board_id: int):
     sprints = client.get_sprints(board_id, state="active,closed,future")
+    logger.info(f"list_sprints board_id={board_id}: {len(sprints)} sprints")
 
     def sort_key(s: dict):
         state = s.get("state", "")
         order = {"active": 0, "future": 1, "closed": 2}.get(state, 3)
-        # Within closed: most recent (highest id) first
         id_tie = -s["id"] if state == "closed" else s["id"]
         return (order, id_tie)
 
@@ -108,6 +115,7 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
     sprints = client.get_sprints(board_id)
     sprint = next((s for s in sprints if s["id"] == sprint_id), None)
     if not sprint:
+        logger.error(f"dashboard_data: sprint {sprint_id} not found on board {board_id}")
         return {
             "error": "Sprint not found",
             "sprint": {}, "kpis": {}, "by_person": [], "by_project": [], "deviations": [],
@@ -122,6 +130,7 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
 
     # ── Issues ───────────────────────────────────────────────────────────────
     issues = client.get_sprint_issues_by_jql(sprint_id)
+    logger.info(f"dashboard_data sprint={sprint_id}: {len(issues)} issues")
 
     # ── Aggregate ────────────────────────────────────────────────────────────
     total_original_s = 0
@@ -171,8 +180,10 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
         else:
             total_remaining_s += rem_s
 
-        # Deviation per issue
-        if orig_s > 0 and spent_s > 0:
+        # Deviation per issue — guard against zero original estimate
+        if orig_s == 0 or spent_s == 0:
+            pass  # no estimate or no time logged: skip deviation
+        else:
             dev_pct = (spent_s - orig_s) / orig_s * 100
             if abs(dev_pct) > 10:
                 deviations.append({
@@ -234,8 +245,10 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
         round(work_remaining_h / total_original_h * 100, 1) if total_original_h > 0 else 0.0
     )
 
-    team_size           = len([p for p in by_person if p != "_unassigned"])
-    capacity_remaining_h= round(team_size * 8 * days_remaining * 0.8, 1)
+    team_size            = len([p for p in by_person if p != "_unassigned"])
+    capacity_remaining_h = round(
+        team_size * settings.work_hours_per_day * days_remaining * settings.team_utilization_factor, 1
+    )
 
     current_work_s  = total_remaining_s + total_spent_s
     deviation_pct   = (
@@ -303,6 +316,11 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
         })
     by_project_list.sort(key=lambda x: x["key"])
     deviations.sort(key=lambda x: abs(x["deviation_pct"]), reverse=True)
+
+    logger.info(
+        f"dashboard_data sprint={sprint_id}: done={done_count}/{len(issues)}, "
+        f"team_size={team_size}, capacity_remaining={capacity_remaining_h}h"
+    )
 
     return {
         "sprint": {

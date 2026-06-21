@@ -1,19 +1,19 @@
-# Jira Dashboard — Local Dev Environment
+# Jira Dashboard
 
-100% local Docker setup: Jira Software + FastAPI dashboards + simulated project data.
+FastAPI + React dashboard that connects directly to Jira Server via REST API.
 
 ## Stack
 
-| Service  | Image / Tech              | Port  |
+| Service  | Tech                      | Port  |
 |----------|---------------------------|-------|
-| postgres | postgres:14               | 5432  |
-| jira     | atlassian/jira-software   | 8080  |
 | api      | Python 3.12 / FastAPI     | 8000  |
+| frontend | React / Vite / Tailwind   | 5173  |
 
 ## Prerequisites
 
-- Docker Desktop with ≥4 GB RAM allocated
-- Docker Compose v2
+- Python 3.12+
+- Node.js 18+
+- Access to a Jira Server instance
 
 ## Quick Start
 
@@ -21,30 +21,29 @@
 # 1. Enter project directory
 cd jira-dashboard
 
-# 2. Create env file
+# 2. Create env file and fill in your credentials
 cp .env.example .env
 
-# 3. Start Jira + Postgres (takes 2–4 min first boot)
-docker compose up postgres jira -d
+# 3. Install API dependencies
+cd api && pip install -r requirements.txt
 
-# 4. Watch logs until Jira is ready
-docker compose logs -f jira
-# Wait for: "Jira is ready to serve requests"
+# 4. Start the API
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-# 5. Open http://localhost:8080 and complete the setup wizard
-#    - Choose "Set it up for me" (evaluation license, 30 days)
-#    - Create admin user: admin / admin_password  (or your own)
-#    - Update .env with the credentials you chose
-
-# 6. Start the API
-docker compose up api -d
-
-# 7. Seed realistic data
-docker compose exec api python seed/seed_data.py
-
-# 8. Open dashboards
-open http://localhost:8000/dashboard/overview
+# 5. In a second terminal, install and start the frontend
+cd frontend && npm install && npm run dev
 ```
+
+## Configuration (.env)
+
+| Variable                 | Default | Description                                      |
+|--------------------------|---------|--------------------------------------------------|
+| `JIRA_BASE_URL`          | —       | Base URL of your Jira Server (required)          |
+| `JIRA_USER`              | —       | Jira username (required)                         |
+| `JIRA_PASSWORD`          | —       | Jira password (required)                         |
+| `WORK_HOURS_PER_DAY`     | 8       | Working hours per day for capacity calculation   |
+| `TEAM_UTILIZATION_FACTOR`| 0.8     | Team utilization factor (0–1) for capacity calc  |
+| `VELOCITY_SPRINT_WINDOW` | 3       | Number of past closed sprints for velocity avg   |
 
 ## Dashboards
 
@@ -58,38 +57,20 @@ open http://localhost:8000/dashboard/overview
 
 ## JSON API
 
-| Endpoint               | Description                    |
-|------------------------|--------------------------------|
-| `GET /api/overview`    | Global KPIs                    |
-| `GET /api/velocity/{project}` | Velocity data          |
-| `GET /api/burndown/{project}` | Burndown data          |
-| `GET /api/backlog/{project}`  | Backlog distribution   |
-| `GET /api/team/{project}`     | Team workload          |
+| Endpoint                              | Description                    |
+|---------------------------------------|--------------------------------|
+| `GET /api/overview`                   | Global KPIs                    |
+| `GET /api/velocity/{project}`         | Velocity data                  |
+| `GET /api/burndown/{project}`         | Burndown data                  |
+| `GET /api/backlog/{project}`          | Backlog distribution           |
+| `GET /api/team/{project}`             | Team workload                  |
+| `GET /api/sprint-dashboard/data`      | Sprint dashboard (board+sprint)|
 
 API docs: http://localhost:8000/docs
 
-## Simulated Data (per project)
-
-- **3 Projects**: MDA (Scrum), CRM (Scrum), INF (Kanban)
-- **8 Users**: Frontend, Backend, QA, Designer, SM, PO, DevOps
-- **Per project**: 5 Epics · 30 Stories · 15 Bugs · 10 Tasks
-- **Sprints**: 3 closed + 1 active + 1 future (Scrum projects)
-- **Workflow**: To Do → In Progress → In Review → Done / Blocked
-
-## Apple Silicon Notes
-
-The `docker-compose.yml` sets `platform: linux/amd64` on the Jira service.
-Rosetta emulation handles this automatically on M1/M2/M3 Macs.
-
-## Memory
-
-Jira needs ≥4 GB RAM in Docker Desktop preferences.
-Reduce `JVM_MAXIMUM_MEMORY` to `1536m` in `docker-compose.yml` if constrained.
-
-## Reset
+## Running Tests
 
 ```bash
-# Wipe all data and start fresh
-docker compose down -v
-docker compose up postgres jira -d
+cd api
+python3 -m pytest tests/ -v
 ```

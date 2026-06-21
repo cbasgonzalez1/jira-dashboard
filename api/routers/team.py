@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -7,6 +8,7 @@ from jira_client import JiraClient
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 client = JiraClient()
+logger = logging.getLogger(__name__)
 
 
 def get_team_data(project_key: str) -> dict:
@@ -18,6 +20,7 @@ def get_team_data(project_key: str) -> dict:
             fields=["summary", "assignee", "issuetype", "status", sp_field, "priority"],
             max_results=500,
         )
+        logger.info(f"[{project_key}] team issues: {len(issues)}")
 
         by_user: dict = defaultdict(lambda: {
             "display": "",
@@ -57,7 +60,8 @@ def get_team_data(project_key: str) -> dict:
 
         sorted_users = sorted(result.items(), key=lambda x: x[1]["issues"], reverse=True)
         return {"project": project_key, "users": sorted_users, "total_issues": len(issues)}
-    except Exception:
+    except Exception as e:
+        logger.error(f"[{project_key}] get_team_data failed: {e}")
         return empty
 
 
@@ -67,7 +71,10 @@ async def api_team(project: str):
 
 
 @router.get("/dashboard/team", response_class=HTMLResponse)
-async def dashboard_team(request: Request, project: str = "DEVOPSSP"):
+async def dashboard_team(request: Request, project: str | None = None):
+    if not project:
+        projects = client.get_all_projects()
+        project = projects[0]["key"] if projects else ""
     project = project.upper()
     data = get_team_data(project)
     return templates.TemplateResponse(

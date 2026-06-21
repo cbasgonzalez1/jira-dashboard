@@ -8,3 +8,5 @@ pydantic-settings==2.2.1
 faker==24.11.0
 rich==13.7.1
 urllib3==2.2.1
+pytest==8.2.2
+pytest-mock==3.14.0
