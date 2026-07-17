@@ -6,7 +6,7 @@
 {% block content %}
 <div class="page-header">
   <h1>Team Workload</h1>
-  <p>Open issue distribution and story points per team member</p>
+  <p>Open issue distribution per team member — backlog total y sprint actual por separado</p>
 </div>
 
 <div class="project-selector">
@@ -36,31 +36,31 @@
     </div>
   </div>
 
-  <!-- Story points per person -->
+  <!-- Hours per person (backlog) -->
   <div class="card">
-    <div class="card-title">Story Points per Person</div>
+    <div class="card-title">Hours per Person (backlog)</div>
     <div class="chart-container-tall">
       <canvas id="spChart"></canvas>
     </div>
   </div>
 </div>
 
-<!-- Detail table -->
+<!-- Detail table: backlog total -->
 <div class="card">
-  <div class="card-title">Team Detail — {{ selected }}</div>
+  <div class="card-title">Backlog total — {{ selected }}</div>
   <table>
     <thead>
       <tr>
         <th>Person</th>
         <th>Open Issues</th>
-        <th>Story Points</th>
+        <th>Hours</th>
         <th>Blocked</th>
         <th>Issue Types</th>
         <th>Load</th>
       </tr>
     </thead>
     <tbody>
-      {% set max_issues = users[0][1].issues if users else 1 %}
+      {% set max_issues = users[0][1].backlog.issues if users else 1 %}
       {% for username, info in users %}
       <tr>
         <td>
@@ -69,29 +69,68 @@
           <div style="font-size:11px;color:var(--text-muted)">{{ username }}</div>
           {% endif %}
         </td>
-        <td>{{ info.issues }}</td>
-        <td>{{ info.story_points }}</td>
+        <td>{{ info.backlog.issues }}</td>
+        <td>{{ info.backlog.hours }}</td>
         <td>
-          {% if info.blocked > 0 %}
-          <span class="badge badge-red">{{ info.blocked }}</span>
+          {% if info.backlog.blocked > 0 %}
+          <span class="badge badge-red">{{ info.backlog.blocked }}</span>
           {% else %}
           <span style="color:var(--text-muted)">—</span>
           {% endif %}
         </td>
         <td>
-          {% for itype, cnt in info.by_type.items() %}
+          {% for itype, cnt in info.backlog.by_type.items() %}
           <span class="badge badge-blue" style="margin-right:3px;">{{ itype }} ({{ cnt }})</span>
           {% endfor %}
         </td>
         <td style="width:150px;">
-          {% set pct = (info.issues / [max_issues, 1]|max * 100) | int %}
+          {% set pct = (info.backlog.issues / [max_issues, 1]|max * 100) | int %}
           <div class="progress-bar">
             <div class="progress-fill {% if pct > 80 %}red{% elif pct > 50 %}yellow{% endif %}"
                  style="width:{{ pct }}%"></div>
           </div>
-          <div class="sprint-pct">{{ info.issues }} issues</div>
+          <div class="sprint-pct">{{ info.backlog.issues }} issues</div>
         </td>
       </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Detail table: active sprint only -->
+<div class="card" style="margin-top:20px;">
+  <div class="card-title">Sprint actual — {{ selected }}</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Person</th>
+        <th>Issues (sprint)</th>
+        <th>Hours (sprint)</th>
+        <th>Blocked</th>
+        <th>Issue Types</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for username, info in users %}
+      {% if info.sprint.issues > 0 %}
+      <tr>
+        <td><strong>{{ info.display }}</strong></td>
+        <td>{{ info.sprint.issues }}</td>
+        <td>{{ info.sprint.hours }}</td>
+        <td>
+          {% if info.sprint.blocked > 0 %}
+          <span class="badge badge-red">{{ info.sprint.blocked }}</span>
+          {% else %}
+          <span style="color:var(--text-muted)">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% for itype, cnt in info.sprint.by_type.items() %}
+          <span class="badge badge-blue" style="margin-right:3px;">{{ itype }} ({{ cnt }})</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endif %}
       {% endfor %}
     </tbody>
   </table>
@@ -100,8 +139,8 @@
 <script>
 const users = {{ users | tojson }};
 const labels = users.map(u => u[1].display);
-const issues = users.map(u => u[1].issues);
-const spoints = users.map(u => u[1].story_points);
+const issues = users.map(u => u[1].backlog.issues);
+const spoints = users.map(u => u[1].backlog.hours);
 
 function makeBar(id, labels, data, color, label) {
   const ctx = document.getElementById(id).getContext('2d');
@@ -132,6 +171,6 @@ function makeBar(id, labels, data, color, label) {
 }
 
 makeBar('issuesChart', labels, issues, 'rgba(88,166,255,0.7)', 'Open Issues');
-makeBar('spChart', labels, spoints, 'rgba(63,185,80,0.7)', 'Story Points');
+makeBar('spChart', labels, spoints, 'rgba(63,185,80,0.7)', 'Hours');
 </script>
 {% endblock %}

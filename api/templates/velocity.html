@@ -6,7 +6,7 @@
 {% block content %}
 <div class="page-header">
   <h1>Team Velocity</h1>
-  <p>Story points committed vs completed per sprint</p>
+  <p>Hours committed vs completed per sprint</p>
 </div>
 
 <!-- Project selector -->
@@ -21,7 +21,10 @@
 <div class="kpi-grid" style="margin-bottom:24px;">
   <div class="kpi-card">
     <div class="kpi-label">Avg Velocity</div>
-    <div class="kpi-value green">{{ avg_velocity }} pts</div>
+    <div class="kpi-value green">{{ avg_velocity }} h</div>
+    {% if avg_velocity_sp %}
+    <div style="font-size:11px;color:var(--text-muted)">{{ avg_velocity_sp }} pts (secundario)</div>
+    {% endif %}
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Sprints Shown</div>
@@ -31,7 +34,7 @@
   <div class="kpi-card">
     <div class="kpi-label">Last Sprint Completed</div>
     <div class="kpi-value purple">
-      {{ sprints[-1].completed if sprints[-1].state == 'closed' else sprints[-1].completed }} pts
+      {{ sprints[-1].completed }} h
     </div>
   </div>
   {% endif %}
@@ -51,8 +54,8 @@
       <tr>
         <th>Sprint</th>
         <th>State</th>
-        <th>Committed</th>
-        <th>Completed</th>
+        <th>Committed (h)</th>
+        <th>Completed (h)</th>
         <th>Completion %</th>
       </tr>
     </thead>

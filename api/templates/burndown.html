@@ -6,7 +6,7 @@
 {% block content %}
 <div class="page-header">
   <h1>Sprint Burndown</h1>
-  <p>Ideal vs actual remaining story points</p>
+  <p>Ideal vs actual remaining hours</p>
 </div>
 
 <div class="project-selector">
@@ -23,17 +23,20 @@
     <div style="font-size:16px;font-weight:600;">{{ sprint }}</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Total Points</div>
-    <div class="kpi-value accent">{{ total_pts }}</div>
+    <div class="kpi-label">Total Hours</div>
+    <div class="kpi-value accent">{{ total_h }}h</div>
+    {% if total_sp %}
+    <div style="font-size:11px;color:var(--text-muted)">{{ total_sp }} pts (secundario)</div>
+    {% endif %}
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Done</div>
-    <div class="kpi-value green">{{ done_pts }}</div>
+    <div class="kpi-value green">{{ done_h }}h</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Remaining</div>
-    <div class="kpi-value {% if remaining_pts > total_pts * 0.5 %}red{% elif remaining_pts > total_pts * 0.2 %}yellow{% else %}green{% endif %}">
-      {{ remaining_pts }}
+    <div class="kpi-value {% if remaining_h > total_h * 0.5 %}red{% elif remaining_h > total_h * 0.2 %}yellow{% else %}green{% endif %}">
+      {{ remaining_h }}h
     </div>
   </div>
   <div class="kpi-card">
@@ -96,7 +99,7 @@ new Chart(ctx, {
         ticks: { color: '#8b949e' },
         grid: { color: '#30363d' },
         beginAtZero: true,
-        title: { display: true, text: 'Story Points Remaining', color: '#8b949e' },
+        title: { display: true, text: 'Horas restantes', color: '#8b949e' },
       },
     },
   },
