@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from jira_client import JiraClient
-from constants import DONE_STATUSES
+from status_category import categorize
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -32,7 +32,7 @@ def _fetch_project_data(proj_meta: dict) -> dict | None:
 
         sprint_done = [
             i for i in sprint_issues
-            if (i["fields"].get("status") or {}).get("name", "").lower() in DONE_STATUSES
+            if categorize(i["fields"].get("status") or {}) == "done"
         ]
 
         critical_bugs = client.search_issues(
@@ -49,8 +49,11 @@ def _fetch_project_data(proj_meta: dict) -> dict | None:
         )
         logger.info(f"[{key}] unassigned: {len(unassigned)}")
 
+        # statusCategory (not status) — its "In Progress" name is a stable
+        # English identifier independent of the workflow's localized status
+        # names (e.g. "En progreso"), unlike a literal status match.
         epics_ip = client.search_issues(
-            f'project = {key} AND issuetype = Epic AND status = "In Progress"',
+            f'project = {key} AND issuetype = Epic AND statusCategory = "In Progress"',
             fields=["summary", "status"],
             max_results=20,
         )

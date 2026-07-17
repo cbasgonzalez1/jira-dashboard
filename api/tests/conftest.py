@@ -1,5 +1,19 @@
 """Shared helpers for building mock Jira objects."""
 
+# Infers statusCategory.key from the literal status name used across existing
+# tests, so make_issue(status="Done") still produces a realistic fixture
+# without every call site having to pass category explicitly.
+_STATUS_TO_CATEGORY_KEY = {
+    "done": "done",
+    "resolved": "done",
+    "closed": "done",
+    "to do": "new",
+    "open": "new",
+    "backlog": "new",
+    "in progress": "indeterminate",
+    "blocked": "indeterminate",
+}
+
 
 def make_issue(
     status="Open",
@@ -14,16 +28,19 @@ def make_issue(
     project_key="PROJ",
     project_name="Project",
     key="PROJ-1",
+    category=None,
 ):
     assignee = None
     if assignee_name:
         assignee = {"name": assignee_name, "displayName": assignee_display or assignee_name, "accountId": assignee_name}
 
+    category_key = category or _STATUS_TO_CATEGORY_KEY.get(status.lower(), "indeterminate")
+
     return {
         "key": key,
         "fields": {
             "summary": f"Issue {key}",
-            "status": {"name": status},
+            "status": {"name": status, "statusCategory": {"key": category_key}},
             "issuetype": {"name": itype},
             "assignee": assignee,
             "priority": {"name": priority},

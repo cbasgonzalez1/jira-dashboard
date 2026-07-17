@@ -13,6 +13,7 @@ def _search_side_effect(open_issues, sprint_issues, bugs, unassigned, epics):
         if "assignee is EMPTY" in jql:
             return unassigned
         if "issuetype = Epic" in jql:
+            assert 'statusCategory = "In Progress"' in jql
             return epics
         return open_issues
     return side_effect
@@ -80,6 +81,29 @@ def test_overview_one_project_fails(mock_client):
 
     assert result["active_projects"] == 1
     assert result["projects"][0]["key"] == "OK"
+
+
+@patch("routers.overview.client")
+def test_overview_sprint_done_uses_status_category_not_literal_name(mock_client):
+    """'Listo' isn't in any hardcoded English/Spanish name list, but its
+    statusCategory.key is 'done' — sprint_done must count it."""
+    mock_client.get_all_projects.return_value = [{"key": "PROJ", "name": "Project"}]
+    mock_client.search_issues.side_effect = _search_side_effect(
+        open_issues=[],
+        sprint_issues=[
+            make_issue("Listo", category="done"),
+            make_issue("Resuelta", category="done"),
+            make_issue("En progreso", category="indeterminate"),
+        ],
+        bugs=[],
+        unassigned=[],
+        epics=[],
+    )
+
+    result = get_overview_data()
+
+    assert result["projects"][0]["sprint_done"] == 2
+    assert result["projects"][0]["sprint_total"] == 3
 
 
 @patch("routers.overview.client")
