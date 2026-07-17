@@ -3,17 +3,21 @@ from routers.velocity import get_velocity_data
 from tests.conftest import make_issue, make_board, make_sprint
 
 
-def _sprint_issues(done_sp=5, total_sp=8):
+def _sprint_issues_hours(done_h=5, total_h=8):
+    """One done issue (spent == original, counts as completed) and one
+    in-progress issue, so committed == total_h and completed == done_h."""
+    done_s = done_h * 3600
+    remaining_s = (total_h - done_h) * 3600
     return [
-        make_issue("Done", sp=done_sp),
-        make_issue("In Progress", sp=total_sp - done_sp),
+        make_issue("Done", category="done", orig_s=done_s, spent_s=done_s),
+        make_issue("In Progress", category="indeterminate", orig_s=remaining_s, spent_s=0),
     ]
 
 
 @patch("routers.velocity.client")
 def test_velocity_normal(mock_client):
     mock_client.get_story_points_field.return_value = "customfield_10002"
-    mock_client.get_boards.return_value = [make_board()]
+    mock_client.get_boards.return_value = [make_board(bid=1)]
     mock_client.get_sprints.side_effect = lambda board_id, state=None: {
         "closed": [
             make_sprint(1, "Sprint 1", "closed"),
@@ -22,16 +26,42 @@ def test_velocity_normal(mock_client):
         ],
         "active": [make_sprint(4, "Sprint 4", "active")],
     }.get(state, [])
-    mock_client.get_sprint_issues.return_value = _sprint_issues(done_sp=5, total_sp=8)
+    mock_client.get_sprint_issues.return_value = _sprint_issues_hours(done_h=5, total_h=8)
 
     result = get_velocity_data("PROJ")
 
     assert result["project"] == "PROJ"
+    assert result["board_id"] == 1
     assert len(result["sprints"]) == 4
     closed = [s for s in result["sprints"] if s["state"] == "closed"]
     assert len(closed) == 3
     assert all(s["completed"] == 5 for s in closed)
+    assert all(s["committed"] == 8 for s in closed)
     assert result["avg_velocity"] == 5
+
+
+@patch("routers.velocity.client")
+def test_velocity_story_points_shown_as_secondary(mock_client):
+    """When a sprint does have story points, they ride along as *_sp fields
+    without replacing hours as the primary committed/completed metric."""
+    mock_client.get_story_points_field.return_value = "customfield_10002"
+    mock_client.get_boards.return_value = [make_board(bid=1)]
+    mock_client.get_sprints.side_effect = lambda board_id, state=None: {
+        "closed": [make_sprint(1, "Sprint 1", "closed")],
+        "active": [],
+    }.get(state, [])
+    mock_client.get_sprint_issues.return_value = [
+        make_issue("Done", category="done", orig_s=3600, spent_s=3600, sp=5),
+        make_issue("In Progress", category="indeterminate", orig_s=3600, spent_s=0, sp=3),
+    ]
+
+    result = get_velocity_data("PROJ")
+
+    sprint = result["sprints"][0]
+    assert sprint["completed"] == 1  # 1h spent on the done issue
+    assert sprint["completed_sp"] == 5
+    assert sprint["committed_sp"] == 8
+    assert result["avg_velocity_sp"] == 5
 
 
 @patch("routers.velocity.client")
@@ -61,14 +91,14 @@ def test_velocity_no_closed_sprints(mock_client):
 
 
 @patch("routers.velocity.client")
-def test_velocity_zero_story_points(mock_client):
+def test_velocity_zero_effort(mock_client):
     mock_client.get_story_points_field.return_value = "customfield_10002"
     mock_client.get_boards.return_value = [make_board()]
     mock_client.get_sprints.side_effect = lambda board_id, state=None: {
         "closed": [make_sprint(1, "Sprint 1", "closed")],
         "active": [],
     }.get(state, [])
-    mock_client.get_sprint_issues.return_value = [make_issue("Done", sp=None)]
+    mock_client.get_sprint_issues.return_value = [make_issue("Done", category="done", sp=None)]
 
     result = get_velocity_data("PROJ")
 
@@ -92,6 +122,35 @@ def test_velocity_sprint_window_respected(mock_client):
 
     closed = [s for s in result["sprints"] if s["state"] == "closed"]
     assert len(closed) == 3
+
+
+@patch("routers.velocity.client")
+def test_velocity_explicit_board_id_used(mock_client):
+    boards = [make_board(bid=1, name="Board own"), make_board(bid=2, name="Board shared")]
+    mock_client.get_story_points_field.return_value = "customfield_10002"
+    mock_client.get_boards.return_value = boards
+    mock_client.get_sprints.side_effect = lambda board_id, state=None: (
+        [make_sprint(10, "Sprint on board 2", "active")] if board_id == 2 and state == "active" else []
+    )
+    mock_client.get_sprint_issues.return_value = []
+
+    result = get_velocity_data("PROJ", board_id=2)
+
+    assert result["board_id"] == 2
+    assert result["sprints"][0]["name"] == "Sprint on board 2"
+
+
+@patch("routers.velocity.client")
+def test_velocity_unknown_board_id_falls_back_to_first(mock_client):
+    boards = [make_board(bid=1)]
+    mock_client.get_story_points_field.return_value = "customfield_10002"
+    mock_client.get_boards.return_value = boards
+    mock_client.get_sprints.return_value = []
+    mock_client.get_sprint_issues.return_value = []
+
+    result = get_velocity_data("PROJ", board_id=999)
+
+    assert result["board_id"] == 1
 
 
 @patch("routers.velocity.client")
