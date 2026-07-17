@@ -136,6 +136,22 @@ def test_data_deviation_only_above_threshold(mock_client):
 
 
 @patch("routers.sprint_dashboard.client")
+def test_data_custom_done_status_counted(mock_client):
+    """'Listo'/'Resuelta' aren't in any hardcoded name list, but their
+    statusCategory.key is 'done' — they must count as done, not in_progress."""
+    mock_client.get_sprints.return_value = [SPRINT]
+    mock_client.get_sprint_issues_by_jql.return_value = [
+        make_issue("Listo", category="done", assignee_name="alice", sp=5, orig_s=3600, spent_s=3600),
+        make_issue("Resuelta", category="done", assignee_name="bob", sp=3, orig_s=3600, spent_s=3600),
+    ]
+
+    result = run(dashboard_data(board_id=1, sprint_id=42))
+
+    assert result["kpis"]["done_issues"] == 2
+    assert result["kpis"]["done_sp"] == 8
+
+
+@patch("routers.sprint_dashboard.client")
 def test_list_projects(mock_client):
     mock_client.get_all_projects.return_value = [
         {"key": "B", "name": "Beta"},

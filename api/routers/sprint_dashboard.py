@@ -3,38 +3,30 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Query
 from jira_client import JiraClient
 from config import settings
-from constants import DONE_STATUSES, TODO_STATUSES, IN_PROGRESS_STATUSES
+from status_category import categorize
+from effort import extract_effort
 
 router = APIRouter(prefix="/api/sprint-dashboard")
 client = JiraClient()
 logger = logging.getLogger(__name__)
 
-# ── Status map — English + Spanish ────────────────────────────────────────────
-_STATUS_MAP = {
-    # todo
-    "to do": "todo", "backlog": "todo", "open": "todo",
-    "selected for development": "todo",
-    "por hacer": "todo", "abierto": "todo",
-    # in_progress
-    "in progress": "in_progress", "in development": "in_progress",
-    "en curso": "in_progress", "en progreso": "in_progress",
-    # validation / review
-    "in review": "validation", "code review": "validation",
-    "testing": "validation", "qa": "validation",
-    "in testing": "validation", "review": "validation",
-    "validación": "validation", "en revisión": "validation",
-    # blocked (counts as work remaining)
-    "blocked": "in_progress", "bloqueado": "in_progress",
-    # done — source of truth is DONE_STATUSES constant
-    **{s: "done" for s in DONE_STATUSES},
+# Status names that mean "review/validation" within the "in_progress"
+# statusCategory — Jira's own categories only distinguish todo/in_progress/
+# done, but this dashboard also wants to separate out review-ish work.
+_VALIDATION_STATUS_NAMES = {
+    "in review", "code review", "testing", "qa", "in testing", "review",
+    "validación", "en revisión", "po/team validation", "to validate",
+    "under review", "test execution", "test implemented",
 }
 
 
-def _cat(status_name: str) -> str:
-    s = status_name.lower().strip()
-    if s in DONE_STATUSES:
-        return "done"
-    return _STATUS_MAP.get(s, "in_progress")
+def _cat(status_field: dict) -> str:
+    base = categorize(status_field)
+    if base != "in_progress":
+        return base
+    if (status_field.get("name") or "").lower().strip() in _VALIDATION_STATUS_NAMES:
+        return "validation"
+    return "in_progress"
 
 
 def _h(seconds) -> float:
@@ -51,12 +43,8 @@ def _parse_dt(s: str, fallback: datetime) -> datetime:
 
 
 def _sp(fields: dict) -> float:
-    """Extract story points: customfield_10002 primary, customfield_11934 fallback."""
-    return (
-        fields.get("customfield_10002")
-        or fields.get("customfield_11934")
-        or 0
-    )
+    """Story points: customfield_10002 primary, customfield_11934 fallback."""
+    return extract_effort(fields, "customfield_10002")["committed_sp"]
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -149,8 +137,7 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
         f   = issue.get("fields", {})
         key = issue.get("key", "")
 
-        status_name = (f.get("status") or {}).get("name", "")
-        cat = _cat(status_name)
+        cat = _cat(f.get("status") or {})
 
         assignee  = f.get("assignee") or {}
         pid       = assignee.get("name") or assignee.get("accountId") or "_unassigned"
