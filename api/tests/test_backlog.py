@@ -59,6 +59,21 @@ def test_backlog_api_error(mock_client):
 
 
 @patch("routers.backlog.client")
+def test_backlog_hours_count_as_estimated(mock_client):
+    """No story points but hours committed — most teams in this org estimate
+    in hours, so this isn't 'unestimated'."""
+    mock_client.get_story_points_field.return_value = "customfield_10002"
+    mock_client.search_issues.return_value = [
+        make_issue("To Do", sp=None, orig_s=8 * 3600),
+        make_issue("To Do", sp=None, orig_s=0),
+    ]
+
+    result = get_backlog_data("PROJ")
+
+    assert result["unestimated"] == 1
+
+
+@patch("routers.backlog.client")
 def test_backlog_no_assignee_field_ignored(mock_client):
     """Backlog groups by type/priority/status, not assignee — None assignee is fine."""
     mock_client.get_story_points_field.return_value = "customfield_10002"

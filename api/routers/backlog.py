@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from collections import Counter
 from jira_client import JiraClient
+from effort import extract_effort
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -17,7 +18,10 @@ def get_backlog_data(project_key: str) -> dict:
         sp_field = client.get_story_points_field()
         issues = client.search_issues(
             f'project = {project_key} AND resolution = Unresolved AND sprint not in openSprints()',
-            fields=["summary", "issuetype", "priority", "status", sp_field],
+            fields=[
+                "summary", "issuetype", "priority", "status", sp_field,
+                "timetracking", "timespent", "timeoriginalestimate",
+            ],
             max_results=500,
         )
         logger.info(f"[{project_key}] backlog issues: {len(issues)}")
@@ -32,7 +36,10 @@ def get_backlog_data(project_key: str) -> dict:
             by_type[(f.get("issuetype") or {}).get("name", "Unknown")] += 1
             by_priority[(f.get("priority") or {}).get("name", "None")] += 1
             by_status[(f.get("status") or {}).get("name", "Unknown")] += 1
-            if not f.get(sp_field):
+            # Most teams in this org estimate in hours, not story points —
+            # an issue with hours committed isn't "unestimated" just because
+            # it lacks story points.
+            if not f.get(sp_field) and extract_effort(f, sp_field)["committed_h"] == 0:
                 unestimated += 1
 
         return {
