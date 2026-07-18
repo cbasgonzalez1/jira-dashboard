@@ -82,7 +82,7 @@ export default function Velocity() {
               value={`${bestSprint?.completed ?? 0}h`}
               icon={Target}
               color="blue"
-              subtitle={bestSprint?.name?.replace(/^(SCRUM|CRM|INF)\s/, '') || '—'}
+              subtitle={bestSprint?.name || '—'}
             />
             <KPICard
               label="Tendencia"
@@ -130,7 +130,7 @@ export default function Velocity() {
                   return (
                     <tr key={s.name} className="border-b border-border/50 hover:bg-bg-secondary/50 transition-colors">
                       <td className="py-3 px-3 text-sm font-medium text-text-primary">
-                        {s.name.replace(/^(SCRUM|CRM|INF)\s/, '')}
+                        {s.name}
                       </td>
                       <td className="py-3 px-3">
                         <StatusBadge status={s.state === 'closed' ? 'Done' : 'In Progress'} />

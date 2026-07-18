@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, UserX, Layers, Activity, FolderOpen } from 'lucide-react'
 import { getOverview, getSprintProjects } from '../api/jiraApi.js'
+import { useProject } from '../App.jsx'
 import KPICard from '../components/ui/KPICard.jsx'
 import { KPISkeleton, ErrorCard } from '../components/ui/LoadingSpinner.jsx'
 import clsx from 'clsx'
 
 // ── Project card ───────────────────────────────────────────────────────────────
-function ProjectCard({ proj, hasStats }) {
+function ProjectCard({ proj, hasStats, onNavigate }) {
   const pct = proj.sprint_pct ?? 0
   const barColor = pct >= 70 ? 'bg-accent-green' : pct >= 40 ? 'bg-accent-yellow' : 'bg-accent-red'
 
@@ -61,20 +63,20 @@ function ProjectCard({ proj, hasStats }) {
         </div>
       )}
 
-      {/* Quick links */}
+      {/* Quick links — switch the active project, then navigate */}
       <div className="flex gap-2 pt-1 border-t border-border">
         {[
           { label: 'Velocidad', href: '/velocity' },
           { label: 'Burndown',  href: '/burndown' },
           { label: 'Equipo',    href: '/team' },
         ].map(({ label, href }) => (
-          <a
+          <button
             key={label}
-            href={href}
+            onClick={() => onNavigate(proj.key, href)}
             className="flex-1 text-center text-xs py-1.5 rounded-lg bg-bg-primary text-text-secondary hover:text-accent-blue hover:bg-accent-blue/5 transition-colors border border-border"
           >
             {label}
-          </a>
+          </button>
         ))}
       </div>
     </div>
@@ -83,6 +85,14 @@ function ProjectCard({ proj, hasStats }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function Overview() {
+  const { setProject } = useProject()
+  const navigate = useNavigate()
+
+  function handleNavigate(projectKey, href) {
+    setProject(projectKey)
+    navigate(href)
+  }
+
   // Global KPI stats (may show 0s if Jira calls fail — logged server-side)
   const { data: overviewData, isLoading: overviewLoading, isError, refetch } = useQuery({
     queryKey: ['overview'],
@@ -155,6 +165,7 @@ export default function Overview() {
                 key={p.key}
                 proj={{ key: p.key, name: p.name, ...stats }}
                 hasStats={!!stats}
+                onNavigate={handleNavigate}
               />
             )
           })

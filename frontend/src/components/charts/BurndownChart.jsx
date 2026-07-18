@@ -23,8 +23,8 @@ function CustomTooltip({ active, payload, label }) {
       {actual != null && (
         <p className="text-accent-blue">
           Actual: <strong>{actual}h</strong>
-          {ideal != null && actual > ideal && <span className="text-accent-red ml-1">(+{actual - ideal} behind)</span>}
-          {ideal != null && actual < ideal && <span className="text-accent-green ml-1">({ideal - actual} ahead)</span>}
+          {ideal != null && actual > ideal && <span className="text-accent-red ml-1">(+{(actual - ideal).toFixed(1)} behind)</span>}
+          {ideal != null && actual < ideal && <span className="text-accent-green ml-1">({(ideal - actual).toFixed(1)} ahead)</span>}
         </p>
       )}
     </div>

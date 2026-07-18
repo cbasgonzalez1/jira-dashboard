@@ -35,39 +35,6 @@ const tooltipStyle = {
   itemStyle: { color: '#94a3b8' },
 }
 
-// ── Demo / preview data shown before any sprint is selected ───────────────────
-const DEMO_DATA = {
-  kpis: {
-    days_remaining: 6, days_elapsed: 8, days_total: 14,
-    work_remaining_h: 134, work_remaining_pct: 42,
-    capacity_remaining_h: 230, team_size: 5,
-    deviation_pct: 18, achievable: true, achievable_delta_h: 96,
-    overcost_h: 11, velocity_today_sp: 4.6, done_sp: 37,
-    time_logged_per_day_h: 6.2, remaining_per_person_h: 26.8,
-    total_issues: 52, done_issues: 19,
-  },
-  sprint: { name: 'Sprint 4 - Ejemplo', state: 'active', start_date: '2026-06-04', end_date: '2026-06-18' },
-  by_person: [
-    { account_id: 'u1', name: 'Ana García',      todo: 8,  in_progress: 18, validation: 6,  done: 32, todo_count: 2, in_progress_count: 4, validation_count: 2, done_count: 7,  remaining_h: 32, velocity_today: 4.1, n_projects: 3 },
-    { account_id: 'u2', name: 'Carlos López',    todo: 12, in_progress: 10, validation: 0,  done: 20, todo_count: 3, in_progress_count: 3, validation_count: 0, done_count: 4,  remaining_h: 22, velocity_today: 2.5, n_projects: 2 },
-    { account_id: 'u3', name: 'Marta Ruiz',      todo: 0,  in_progress: 14, validation: 4,  done: 40, todo_count: 0, in_progress_count: 3, validation_count: 1, done_count: 9,  remaining_h: 18, velocity_today: 5.6, n_projects: 2 },
-    { account_id: 'u4', name: 'David Sánchez',   todo: 16, in_progress: 6,  validation: 2,  done: 16, todo_count: 4, in_progress_count: 2, validation_count: 1, done_count: 4,  remaining_h: 24, velocity_today: 2.0, n_projects: 1 },
-    { account_id: 'u5', name: 'Lucía Fernández', todo: 4,  in_progress: 8,  validation: 10, done: 24, todo_count: 1, in_progress_count: 2, validation_count: 3, done_count: 5,  remaining_h: 22, velocity_today: 3.1, n_projects: 3 },
-  ],
-  by_project: [
-    { key: 'SCRUM', name: 'MDA Portal',         todo: 14, in_progress: 22, validation: 8,  done: 48, todo_count: 4, in_progress_count: 6, validation_count: 2, done_count: 11, remaining_h: 44, deviation_pct: 22,  velocity_today: 6.2, mandatory_incomplete: 2, completion_pct: 48 },
-    { key: 'CRM',   name: 'CRM & Admissions',   todo: 18, in_progress: 14, validation: 8,  done: 36, todo_count: 5, in_progress_count: 4, validation_count: 2, done_count: 8,  remaining_h: 40, deviation_pct: -8,  velocity_today: 3.4, mandatory_incomplete: 0, completion_pct: 42 },
-    { key: 'INF',   name: 'Infrastructure',     todo: 8,  in_progress: 20, validation: 6,  done: 28, todo_count: 2, in_progress_count: 4, validation_count: 2, done_count: 6,  remaining_h: 34, deviation_pct: 5,   velocity_today: 3.2, mandatory_incomplete: 1, completion_pct: 38 },
-    { key: 'SEC',   name: 'Security & Compliance', todo: 0, in_progress: 0, validation: 0, done: 20, todo_count: 0, in_progress_count: 0, validation_count: 0, done_count: 4,  remaining_h: 0,  deviation_pct: -12, velocity_today: 2.5, mandatory_incomplete: 0, completion_pct: 100 },
-  ],
-  deviations: [
-    { key: 'SCRUM-42', summary: 'Implementar autenticación SSO',          original_h: 8,  spent_h: 19, deviation_pct: 137.5 },
-    { key: 'CRM-31',   summary: 'Migración de datos legacy a PostgreSQL',  original_h: 16, spent_h: 26, deviation_pct: 62.5 },
-    { key: 'INF-14',   summary: 'Configurar Kubernetes HPA en producción', original_h: 5,  spent_h: 8,  deviation_pct: 60.0 },
-    { key: 'SCRUM-58', summary: 'Dashboard de métricas de rendimiento',    original_h: 10, spent_h: 15, deviation_pct: 50.0 },
-  ],
-}
-
 // ── Empty state for charts ─────────────────────────────────────────────────────
 function EmptyChart({ message, height = 260 }) {
   return (
@@ -200,14 +167,14 @@ export default function SprintDashboard() {
 
   // When no sprint is selected yet, fall back to demo data so the UI is populated
   const boardHasNoSprints = !!boardId && !sprintsQ.isLoading && sprintsQ.data?.length === 0
-  const isDemo = !boardId && !data && !dataQ.isFetching && !dataQ.isError
-  const displayData = boardHasNoSprints ? null : (data ?? (isDemo ? DEMO_DATA : null))
+  const noSelection = !boardId || !sprintId
+  const displayData = boardHasNoSprints ? null : data
 
   const kpis = displayData?.kpis ?? {}
   const sprint = displayData?.sprint ?? {}
 
-  const isFuture = !isDemo && !!data && sprint.state === 'future'
-  const isEmpty = !isDemo && !!data && (data.kpis?.total_issues ?? 0) === 0 && sprint.state !== 'future'
+  const isFuture = !!data && sprint.state === 'future'
+  const isEmpty = !!data && (data.kpis?.total_issues ?? 0) === 0 && sprint.state !== 'future'
   const kpiNote = isFuture ? 'Sprint futuro — sin datos aún'
     : isEmpty ? 'Sin issues registradas'
     : null
@@ -327,6 +294,15 @@ export default function SprintDashboard() {
           <BarChart2 size={36} className="text-text-muted opacity-25" />
           <p className="text-sm font-medium text-text-secondary">Este board no tiene sprints disponibles</p>
           <p className="text-xs text-text-muted">Crea sprints en Jira para este board para ver los datos</p>
+        </div>
+      )}
+
+      {/* No board/sprint selected yet — no data to show */}
+      {noSelection && !boardHasNoSprints && (
+        <div className="card border border-border flex flex-col items-center gap-3 py-16 text-center">
+          <BarChart2 size={36} className="text-text-muted opacity-25" />
+          <p className="text-sm font-medium text-text-secondary">Seleccioná un proyecto, board y sprint</p>
+          <p className="text-xs text-text-muted">Los datos se cargan directo de Jira una vez elegidos los tres filtros</p>
         </div>
       )}
 

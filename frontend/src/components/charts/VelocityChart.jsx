@@ -30,7 +30,7 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function VelocityChart({ sprints = [], avgVelocity = 0 }) {
   const data = sprints.map(s => ({
-    name: s.name.replace(/^(SCRUM|CRM|INF)\s/, ''),
+    name: s.name,
     committed: s.committed,
     completed: s.completed,
     state: s.state,
