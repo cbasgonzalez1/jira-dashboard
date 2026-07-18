@@ -126,7 +126,7 @@ def test_team_sprint_scope_separate_from_backlog(mock_client):
         return backlog_issues
 
     mock_client.search_issues.side_effect = search_issues
-    mock_client.get_sprint_issues.return_value = [sprint_issue]
+    mock_client.get_board_sprint_issues.return_value = [sprint_issue]
 
     result = get_team_data("PROJ")
 
@@ -145,7 +145,7 @@ def test_team_sprint_scope_filters_out_other_projects(mock_client):
     mock_client.get_boards.return_value = _no_sprint_scope_boards
     mock_client.get_sprints.return_value = [{"id": 100, "state": "active", "name": "Sprint 1"}]
     mock_client.search_issues.return_value = []
-    mock_client.get_sprint_issues.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("In Progress", key="PROJ-1", assignee_name="alice", project_key="PROJ"),
         make_issue("In Progress", key="OTHER-1", assignee_name="alice", project_key="OTHER"),
     ]

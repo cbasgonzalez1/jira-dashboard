@@ -77,7 +77,7 @@ def _active_sprint_issues(project_key: str) -> list:
             logger.error(f"[{project_key}] get_sprints failed for board {board['id']}: {e}")
             continue
         for sprint in active_sprints:
-            for issue in client.get_sprint_issues(sprint["id"]):
+            for issue in client.get_board_sprint_issues(board["id"], sprint["id"]):
                 if (issue["fields"].get("project") or {}).get("key") != project_key:
                     continue
                 issues_by_key[issue["key"]] = issue

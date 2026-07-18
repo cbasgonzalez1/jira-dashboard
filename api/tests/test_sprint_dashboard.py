@@ -18,7 +18,7 @@ SPRINT = make_sprint(
 @patch("routers.sprint_dashboard.client")
 def test_data_normal(mock_client):
     mock_client.get_sprints.return_value = [SPRINT]
-    mock_client.get_sprint_issues_by_jql.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("Done", assignee_name="alice", sp=5, orig_s=3600, spent_s=3600),
         make_issue("In Progress", assignee_name="bob", sp=3, orig_s=7200, rem_s=3600, spent_s=3600),
     ]
@@ -48,7 +48,7 @@ def test_data_sprint_not_found(mock_client):
 @patch("routers.sprint_dashboard.client")
 def test_data_no_issues(mock_client):
     mock_client.get_sprints.return_value = [SPRINT]
-    mock_client.get_sprint_issues_by_jql.return_value = []
+    mock_client.get_board_sprint_issues.return_value = []
 
     result = run(dashboard_data(board_id=1, sprint_id=42))
 
@@ -62,7 +62,7 @@ def test_data_no_issues(mock_client):
 @patch("routers.sprint_dashboard.client")
 def test_data_no_assignee(mock_client):
     mock_client.get_sprints.return_value = [SPRINT]
-    mock_client.get_sprint_issues_by_jql.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("In Progress", assignee_name=None, sp=3, rem_s=3600),
     ]
 
@@ -81,7 +81,7 @@ def test_data_no_time_tracking(mock_client):
     issue["fields"]["timetracking"] = {}
     issue["fields"]["timespent"] = None
     issue["fields"]["timeoriginalestimate"] = None
-    mock_client.get_sprint_issues_by_jql.return_value = [issue]
+    mock_client.get_board_sprint_issues.return_value = [issue]
 
     result = run(dashboard_data(board_id=1, sprint_id=42))
 
@@ -93,7 +93,7 @@ def test_data_no_time_tracking(mock_client):
 def test_data_zero_original_estimate_no_deviation(mock_client):
     """orig_s == 0 must not produce a deviation entry (division guard)."""
     mock_client.get_sprints.return_value = [SPRINT]
-    mock_client.get_sprint_issues_by_jql.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("Done", assignee_name="alice", sp=5, orig_s=0, spent_s=7200),
     ]
 
@@ -106,7 +106,7 @@ def test_data_zero_original_estimate_no_deviation(mock_client):
 def test_data_zero_team_size_capacity(mock_client):
     """team_size=0 (all unassigned) must not produce negative capacity."""
     mock_client.get_sprints.return_value = [SPRINT]
-    mock_client.get_sprint_issues_by_jql.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("In Progress", assignee_name=None, sp=3, rem_s=3600),
     ]
 
@@ -120,7 +120,7 @@ def test_data_zero_team_size_capacity(mock_client):
 def test_data_deviation_only_above_threshold(mock_client):
     """Deviations only appear when |dev_pct| > 10."""
     mock_client.get_sprints.return_value = [SPRINT]
-    mock_client.get_sprint_issues_by_jql.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         # 5% over — below threshold
         make_issue("Done", assignee_name="alice", key="PROJ-1", sp=5,
                    orig_s=3600, spent_s=3780),
@@ -140,7 +140,7 @@ def test_data_custom_done_status_counted(mock_client):
     """'Listo'/'Resuelta' aren't in any hardcoded name list, but their
     statusCategory.key is 'done' — they must count as done, not in_progress."""
     mock_client.get_sprints.return_value = [SPRINT]
-    mock_client.get_sprint_issues_by_jql.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("Listo", category="done", assignee_name="alice", sp=5, orig_s=3600, spent_s=3600),
         make_issue("Resuelta", category="done", assignee_name="bob", sp=3, orig_s=3600, spent_s=3600),
     ]

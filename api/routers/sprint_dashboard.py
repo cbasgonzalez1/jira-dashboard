@@ -117,7 +117,7 @@ async def dashboard_data(board_id: int = Query(...), sprint_id: int = Query(...)
     days_remaining = max((end_dt - now).days, 0)
 
     # ── Issues ───────────────────────────────────────────────────────────────
-    issues = client.get_sprint_issues_by_jql(sprint_id)
+    issues = client.get_board_sprint_issues(board_id, sprint_id)
     logger.info(f"dashboard_data sprint={sprint_id}: {len(issues)} issues")
 
     # ── Aggregate ────────────────────────────────────────────────────────────
