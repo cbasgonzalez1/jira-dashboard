@@ -182,3 +182,18 @@ Los dashboards HTML nativos (`/dashboard/velocity`, `/dashboard/burndown`, `/das
 7. Fase 11 (frontend) — uno o dos commits (selector reutilizable + páginas).
 
 Cada commit deja `pytest tests/ -v` en verde.
+
+---
+
+## Fase 13 — Cierre (2026-07-18)
+
+Verificación end-to-end contra Jira real destapó dos causas raíz adicionales no cubiertas por el diseño original, más un cabo suelto del frontend:
+
+1. **`TeamBarChart.jsx` no se había tocado en la Fase 11** — su tooltip seguía mostrando `story_points` (0 para casi todos los equipos). Corregido para mostrar horas, igual que el resto del rediseño.
+2. **Velocity/Burndown mezclaban datos de otros proyectos.** Los tableros de este Jira no tienen `location` (el endpoint de configuración no lo expone) y sus filtros son genuinamente cruzados entre proyectos (verificado leyendo el JQL real del filtro de cada tablero) — la estrategia de "matchear por location" del diseño original no era viable. Fix real: igual que ya hacía `team.py`, se filtran los issues del sprint por `fields.project.key == project_key` antes de sumar horas/puntos (`velocity.py::_sprint_effort`, `burndown.py`). Confirmado con datos reales: el committed de AIC bajó de 1084h (contaminado con THED/SATH/DEVOPSSP/...) a 64h (solo AIC), y da el mismo resultado sin importar cuál de los dos tableros compartidos se elija.
+3. **El Resumen (`/api/overview`) estaba vacío para los 35 proyectos, siempre.** JQL de `critical_bugs` usaba `priority = Highest`, prioridad que no existe en este Jira (escala real: `Blocked > Crítica > High > Medium > Low`) — cada fetch por proyecto tiraba HTTP 400 y `overview.py` lo capturaba silenciosamente devolviendo `None` por proyecto, dejando el dashboard entero en cero. Además, filtrar por el nombre literal `"Crítica"` también falla en este servidor (probable problema de normalización Unicode en su parser JQL) — el fix usa los IDs de prioridad (`10402`=Blocked, `2`=Crítica) en vez del nombre.
+4. **README actualizado** para documentar horas como métrica principal, selector Tablero→Sprint y el toggle Sprint actual/Backlog total.
+
+Verificado contra Jira real (proyecto AIC): `/api/overview` pasa de todo en cero a 35 proyectos con datos (4420 issues abiertos, 30 bugs críticos, 40 épicas en curso); `/api/velocity/AIC` y `/api/burndown/AIC` devuelven horas correctas y consistentes entre los dos tableros compartidos; `/api/team/AIC` y `/api/sprint-dashboard/data` devuelven datos coherentes. Suite completa (`pytest tests/ -v`) sigue en 65/65 verde.
+
+No se pudo tomar captura de pantalla del frontend: este contenedor no tiene navegador headless disponible (`chromium-cli` no está instalado, `npx playwright install --with-deps` requiere `sudo` interactivo no disponible aquí). La verificación de UI se hizo por inspección de código (los componentes consumen exactamente los campos que la API devuelve) más pruebas directas de la API real, no por captura visual.

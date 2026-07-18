@@ -55,16 +55,34 @@ cd frontend && npm install && npm run dev
 | `/dashboard/backlog`           | Backlog health by type/priority    |
 | `/dashboard/team`              | Workload per team member           |
 
+Most teams in this Jira instance estimate and log work in **hours**
+(`timetracking`), not story points, so Velocity and Burndown use hours as
+the primary metric — story points are shown alongside as a secondary value
+only when a project actually has them loaded.
+
+- **Velocity / Burndown**: since several boards in this instance are shared
+  across multiple projects, both pages let you pick a specific
+  Tablero (board) → Sprint instead of guessing. Sprint/velocity totals are
+  always filtered down to the selected project's own issues, even when the
+  underlying sprint spans other projects too.
+- **Carga de equipo (Team)**: toggle between **Sprint actual** (issues in
+  the project's currently active sprint(s)) and **Backlog total** (all
+  unresolved issues) — a person's numbers can look very different between
+  the two, so both are available rather than only one.
+
 ## JSON API
 
-| Endpoint                              | Description                    |
-|---------------------------------------|--------------------------------|
-| `GET /api/overview`                   | Global KPIs                    |
-| `GET /api/velocity/{project}`         | Velocity data                  |
-| `GET /api/burndown/{project}`         | Burndown data                  |
-| `GET /api/backlog/{project}`          | Backlog distribution           |
-| `GET /api/team/{project}`             | Team workload                  |
-| `GET /api/sprint-dashboard/data`      | Sprint dashboard (board+sprint)|
+| Endpoint                                          | Description                                   |
+|----------------------------------------------------|-----------------------------------------------|
+| `GET /api/overview`                                 | Global KPIs                                    |
+| `GET /api/velocity/{project}?board_id=`             | Velocity data (hours primary, points secondary)|
+| `GET /api/burndown/{project}?board_id=&sprint_id=`  | Burndown data (hours primary, points secondary)|
+| `GET /api/backlog/{project}`                        | Backlog distribution                           |
+| `GET /api/team/{project}`                           | Team workload — `{sprint, backlog}` per person |
+| `GET /api/sprint-dashboard/data`                    | Sprint dashboard (board+sprint)                |
+
+`board_id`/`sprint_id` are optional; when omitted the API falls back to the
+project's first board and its active sprint.
 
 API docs: http://localhost:8000/docs
 
