@@ -66,7 +66,7 @@ def get_velocity_data(project_key: str, board_id: int | None = None) -> dict:
         sprint_data = []
         for state, sprints in (("closed", closed_sprints), ("active", active_sprints)):
             for sprint in sprints:
-                issues = client.get_sprint_issues(sprint["id"])
+                issues = client.get_board_sprint_issues(selected_board_id, sprint["id"])
                 logger.info(f"[{project_key}] {state} sprint '{sprint['name']}' issues: {len(issues)}")
                 effort = _sprint_effort(issues, sp_field, project_key)
                 sprint_data.append({

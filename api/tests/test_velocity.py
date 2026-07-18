@@ -26,7 +26,7 @@ def test_velocity_normal(mock_client):
         ],
         "active": [make_sprint(4, "Sprint 4", "active")],
     }.get(state, [])
-    mock_client.get_sprint_issues.return_value = _sprint_issues_hours(done_h=5, total_h=8)
+    mock_client.get_board_sprint_issues.return_value = _sprint_issues_hours(done_h=5, total_h=8)
 
     result = get_velocity_data("PROJ")
 
@@ -50,7 +50,7 @@ def test_velocity_story_points_shown_as_secondary(mock_client):
         "closed": [make_sprint(1, "Sprint 1", "closed")],
         "active": [],
     }.get(state, [])
-    mock_client.get_sprint_issues.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("Done", category="done", orig_s=3600, spent_s=3600, sp=5),
         make_issue("In Progress", category="indeterminate", orig_s=3600, spent_s=0, sp=3),
     ]
@@ -82,7 +82,7 @@ def test_velocity_no_closed_sprints(mock_client):
     mock_client.get_sprints.side_effect = lambda board_id, state=None: (
         [] if state == "closed" else [make_sprint(1, state="active")]
     )
-    mock_client.get_sprint_issues.return_value = []
+    mock_client.get_board_sprint_issues.return_value = []
 
     result = get_velocity_data("PROJ")
 
@@ -98,7 +98,7 @@ def test_velocity_zero_effort(mock_client):
         "closed": [make_sprint(1, "Sprint 1", "closed")],
         "active": [],
     }.get(state, [])
-    mock_client.get_sprint_issues.return_value = [make_issue("Done", category="done", sp=None)]
+    mock_client.get_board_sprint_issues.return_value = [make_issue("Done", category="done", sp=None)]
 
     result = get_velocity_data("PROJ")
 
@@ -116,7 +116,7 @@ def test_velocity_sprint_window_respected(mock_client):
         "closed": [make_sprint(i, f"Sprint {i}", "closed") for i in range(1, 6)],
         "active": [],
     }.get(state, [])
-    mock_client.get_sprint_issues.return_value = []
+    mock_client.get_board_sprint_issues.return_value = []
 
     result = get_velocity_data("PROJ")
 
@@ -132,7 +132,7 @@ def test_velocity_explicit_board_id_used(mock_client):
     mock_client.get_sprints.side_effect = lambda board_id, state=None: (
         [make_sprint(10, "Sprint on board 2", "active")] if board_id == 2 and state == "active" else []
     )
-    mock_client.get_sprint_issues.return_value = []
+    mock_client.get_board_sprint_issues.return_value = []
 
     result = get_velocity_data("PROJ", board_id=2)
 
@@ -146,7 +146,7 @@ def test_velocity_unknown_board_id_falls_back_to_first(mock_client):
     mock_client.get_story_points_field.return_value = "customfield_10002"
     mock_client.get_boards.return_value = boards
     mock_client.get_sprints.return_value = []
-    mock_client.get_sprint_issues.return_value = []
+    mock_client.get_board_sprint_issues.return_value = []
 
     result = get_velocity_data("PROJ", board_id=999)
 

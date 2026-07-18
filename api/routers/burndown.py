@@ -55,7 +55,7 @@ def get_burndown_data(project_key: str, board_id: int | None = None, sprint_id: 
             start = datetime.now(timezone.utc) - timedelta(days=7)
             end = datetime.now(timezone.utc) + timedelta(days=7)
 
-        issues = client.get_sprint_issues(selected_sprint_id)
+        issues = client.get_board_sprint_issues(selected_board_id, selected_sprint_id)
         logger.info(f"[{project_key}] sprint '{sprint['name']}' issues: {len(issues)}")
 
         # Hours (timetracking) are the primary metric — most teams in this

@@ -13,7 +13,7 @@ def test_burndown_normal(mock_client):
         end="2026-06-14T00:00:00+00:00",
     )
     mock_client.get_sprints.return_value = [sprint]
-    mock_client.get_sprint_issues.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("Done", category="done", orig_s=5 * 3600, spent_s=5 * 3600),
         make_issue("In Progress", category="indeterminate", orig_s=3 * 3600, spent_s=0),
     ]
@@ -39,7 +39,7 @@ def test_burndown_story_points_shown_as_secondary(mock_client):
     mock_client.get_story_points_field.return_value = "customfield_10002"
     mock_client.get_boards.return_value = [make_board()]
     mock_client.get_sprints.return_value = [make_sprint()]
-    mock_client.get_sprint_issues.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("Done", category="done", sp=5, orig_s=3600, spent_s=3600),
         make_issue("In Progress", category="indeterminate", sp=3, orig_s=3600, spent_s=0),
     ]
@@ -77,7 +77,7 @@ def test_burndown_no_effort(mock_client):
     mock_client.get_story_points_field.return_value = "customfield_10002"
     mock_client.get_boards.return_value = [make_board()]
     mock_client.get_sprints.return_value = [make_sprint()]
-    mock_client.get_sprint_issues.return_value = [
+    mock_client.get_board_sprint_issues.return_value = [
         make_issue("Done", category="done"),
         make_issue("In Progress", category="indeterminate"),
     ]
@@ -94,7 +94,7 @@ def test_burndown_sprint_without_issues(mock_client):
     mock_client.get_story_points_field.return_value = "customfield_10002"
     mock_client.get_boards.return_value = [make_board()]
     mock_client.get_sprints.return_value = [make_sprint()]
-    mock_client.get_sprint_issues.return_value = []
+    mock_client.get_board_sprint_issues.return_value = []
 
     result = get_burndown_data("PROJ")
 
@@ -122,7 +122,7 @@ def test_burndown_total_days_range_consistency(mock_client):
         start="2026-06-01T00:00:00+00:00",
         end="2026-06-11T00:00:00+00:00",
     )]
-    mock_client.get_sprint_issues.return_value = [make_issue("Done", category="done", orig_s=10 * 3600, spent_s=10 * 3600)]
+    mock_client.get_board_sprint_issues.return_value = [make_issue("Done", category="done", orig_s=10 * 3600, spent_s=10 * 3600)]
 
     result = get_burndown_data("PROJ")
 
@@ -142,7 +142,7 @@ def test_burndown_explicit_board_id_used(mock_client):
         return []
 
     mock_client.get_sprints.side_effect = get_sprints
-    mock_client.get_sprint_issues.return_value = []
+    mock_client.get_board_sprint_issues.return_value = []
 
     result = get_burndown_data("PROJ", board_id=2)
 
@@ -158,7 +158,7 @@ def test_burndown_explicit_sprint_id_used(mock_client):
         make_sprint(sid=1, name="Old sprint", state="closed"),
         make_sprint(sid=2, name="Picked sprint", state="closed"),
     ]
-    mock_client.get_sprint_issues.return_value = []
+    mock_client.get_board_sprint_issues.return_value = []
 
     result = get_burndown_data("PROJ", sprint_id=2)
 

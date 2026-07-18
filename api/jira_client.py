@@ -208,6 +208,31 @@ class JiraClient:
             ],
         )
 
+    def get_board_sprint_issues(self, board_id: int, sprint_id: int) -> list:
+        """Issues in a sprint as a specific board sees them — respects that
+        board's own filter (project/assignee/component clauses), unlike
+        `sprint = X` JQL which has no notion of which board is asking and
+        returns every issue carrying that sprint value regardless of board."""
+        fields = (
+            "summary,status,assignee,priority,issuetype,project,"
+            "customfield_10002,customfield_11934,"
+            "timetracking,timespent,timeoriginalestimate"
+        )
+        all_issues: list = []
+        start_at = 0
+        while True:
+            result = self._get(
+                f"/rest/agile/1.0/board/{board_id}/sprint/{sprint_id}/issue",
+                {"maxResults": 100, "startAt": start_at, "fields": fields},
+            )
+            batch = result.get("issues", [])
+            all_issues.extend(batch)
+            total = result.get("total", 0)
+            start_at += len(batch)
+            if not batch or start_at >= total:
+                break
+        return all_issues
+
     def create_sprint(
         self,
         board_id: int,
