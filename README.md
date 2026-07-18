@@ -62,13 +62,22 @@ only when a project actually has them loaded.
 
 - **Velocity / Burndown**: since several boards in this instance are shared
   across multiple projects, both pages let you pick a specific
-  Tablero (board) → Sprint instead of guessing. Sprint/velocity totals are
-  always filtered down to the selected project's own issues, even when the
-  underlying sprint spans other projects too.
+  Tablero (board) → Sprint instead of guessing. Issues are fetched through
+  Jira's own board-scoped endpoint (`board/{id}/sprint/{id}/issue`), so the
+  numbers reflect that board's real filter (project/assignee/component) —
+  picking a different board for the same project genuinely changes the
+  result, it isn't cosmetic.
 - **Carga de equipo (Team)**: toggle between **Sprint actual** (issues in
   the project's currently active sprint(s)) and **Backlog total** (all
   unresolved issues) — a person's numbers can look very different between
   the two, so both are available rather than only one.
+- **Resumen (Overview)**: each project card's "Velocidad"/"Burndown"/"Equipo"
+  links switch the active project before navigating — they used to be plain
+  links that always showed whichever project happened to be the app's
+  fallback.
+- No dashboard shows placeholder or demo data — Sprint Dashboard used to
+  show a hardcoded example (fake KPIs, fake people, fake project keys)
+  before a board+sprint was picked; it now shows an empty state instead.
 
 ## JSON API
 
