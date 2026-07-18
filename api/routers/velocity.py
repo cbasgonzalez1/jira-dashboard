@@ -13,13 +13,18 @@ client = JiraClient()
 logger = logging.getLogger(__name__)
 
 
-def _sprint_effort(issues: list, sp_field: str) -> dict:
+def _sprint_effort(issues: list, sp_field: str, project_key: str) -> dict:
     committed_h = 0.0
     done_h = 0.0
     committed_sp = 0.0
     done_sp = 0.0
     for i in issues:
         f = i["fields"]
+        # Many boards in this Jira are shared across several projects (their
+        # filter JQL spans multiple project keys), so a sprint's issues can
+        # belong to other projects too — filter back down to this one.
+        if (f.get("project") or {}).get("key") != project_key:
+            continue
         e = extract_effort(f, sp_field)
         committed_h += e["committed_h"]
         committed_sp += e["committed_sp"]
@@ -63,7 +68,7 @@ def get_velocity_data(project_key: str, board_id: int | None = None) -> dict:
             for sprint in sprints:
                 issues = client.get_sprint_issues(sprint["id"])
                 logger.info(f"[{project_key}] {state} sprint '{sprint['name']}' issues: {len(issues)}")
-                effort = _sprint_effort(issues, sp_field)
+                effort = _sprint_effort(issues, sp_field, project_key)
                 sprint_data.append({
                     "name": sprint["name"],
                     "state": state,

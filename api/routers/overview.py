@@ -35,8 +35,16 @@ def _fetch_project_data(proj_meta: dict) -> dict | None:
             if categorize(i["fields"].get("status") or {}) == "done"
         ]
 
+        # This instance's priority scale is Blocked > Crítica > High > Medium
+        # > Low — there is no "Highest" priority, so a literal match against
+        # it always failed with HTTP 400 and made every project's overview
+        # fetch throw, leaving the whole dashboard empty. IDs (10402=Blocked,
+        # 2=Crítica) are used instead of the accented name: matching by the
+        # literal "Crítica" string also fails on this Jira Server (JQL
+        # parser rejects it — verified against the real instance), while
+        # the numeric ID is unambiguous and always works.
         critical_bugs = client.search_issues(
-            f'project = {key} AND issuetype = Bug AND priority = Highest AND resolution = Unresolved',
+            f'project = {key} AND issuetype = Bug AND priority in (10402, 2) AND resolution = Unresolved',
             fields=["summary", "priority"],
             max_results=50,
         )

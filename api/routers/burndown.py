@@ -66,6 +66,12 @@ def get_burndown_data(project_key: str, board_id: int | None = None, sprint_id: 
         done_sp = 0.0
         for i in issues:
             f = i["fields"]
+            # Many boards in this Jira are shared across several projects
+            # (their filter JQL spans multiple project keys), so a sprint's
+            # issues can belong to other projects too — filter back down to
+            # this one.
+            if (f.get("project") or {}).get("key") != project_key:
+                continue
             e = extract_effort(f, sp_field)
             total_h += e["committed_h"]
             total_sp += e["committed_sp"]
