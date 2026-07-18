@@ -1,19 +1,36 @@
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { TrendingUp, TrendingDown, Minus, Zap, Target } from 'lucide-react'
-import { getVelocity } from '../api/jiraApi.js'
+import { getVelocity, getSprintBoards } from '../api/jiraApi.js'
 import { useProject } from '../App.jsx'
 import VelocityChart from '../components/charts/VelocityChart.jsx'
 import KPICard from '../components/ui/KPICard.jsx'
+import Select from '../components/ui/Select.jsx'
 import { ChartSkeleton, KPISkeleton, ErrorCard } from '../components/ui/LoadingSpinner.jsx'
 import { StatusBadge } from '../components/ui/StatusBadge.jsx'
 import clsx from 'clsx'
 
 export default function Velocity() {
   const { project } = useProject()
+  const [boardId, setBoardId] = useState(null)
+
+  const boardsQ = useQuery({
+    queryKey: ['velocity-boards', project],
+    queryFn: () => getSprintBoards(project).then(r => r.data),
+    enabled: !!project,
+  })
+
+  // Reset board selection when the project changes, and default to the
+  // first board once its list loads (most projects only have one).
+  useEffect(() => { setBoardId(null) }, [project])
+  useEffect(() => {
+    if (!boardId && boardsQ.data?.length) setBoardId(boardsQ.data[0].id)
+  }, [boardsQ.data])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['velocity', project],
-    queryFn: () => getVelocity(project).then(r => r.data),
+    queryKey: ['velocity', project, boardId],
+    queryFn: () => getVelocity(project, boardId).then(r => r.data),
+    enabled: !!project,
     refetchInterval: 60_000,
   })
 
@@ -33,20 +50,36 @@ export default function Velocity() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Board selector */}
+      <div className="card border border-border">
+        <Select
+          label="Tablero"
+          value={boardId ?? ''}
+          minW="min-w-56"
+          disabled={boardsQ.isLoading}
+          onChange={e => setBoardId(Number(e.target.value) || null)}
+        >
+          <option value="">Seleccionar tablero…</option>
+          {(boardsQ.data ?? []).map(b => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </Select>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading ? Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />) : (
           <>
             <KPICard
               label="Velocidad media"
-              value={`${data?.avg_velocity ?? 0} pts`}
+              value={`${data?.avg_velocity ?? 0}h`}
               icon={Zap}
               color="green"
-              subtitle="últimos 3 sprints cerrados"
+              subtitle={`últimos 3 sprints cerrados${data?.avg_velocity_sp ? ` · ${data.avg_velocity_sp} pts` : ''}`}
             />
             <KPICard
               label="Mejor sprint"
-              value={`${bestSprint?.completed ?? 0} pts`}
+              value={`${bestSprint?.completed ?? 0}h`}
               icon={Target}
               color="blue"
               subtitle={bestSprint?.name?.replace(/^(SCRUM|CRM|INF)\s/, '') || '—'}
@@ -85,7 +118,7 @@ export default function Velocity() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  {['Sprint', 'Estado', 'Comprometido', 'Completado', 'Completitud'].map(h => (
+                  {['Sprint', 'Estado', 'Comprometido (h)', 'Completado (h)', 'Completitud'].map(h => (
                     <th key={h} className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">{h}</th>
                   ))}
                 </tr>

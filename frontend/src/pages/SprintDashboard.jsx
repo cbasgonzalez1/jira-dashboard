@@ -6,11 +6,12 @@ import {
 } from 'recharts'
 import {
   Clock, Timer, Users, TrendingUp, CheckCircle, AlertTriangle,
-  Zap, BarChart2, User, ChevronDown,
+  Zap, BarChart2, User,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { getSprintProjects, getSprintBoards, getSprintSprints, getSprintData } from '../api/jiraApi.js'
 import KPICard from '../components/ui/KPICard.jsx'
+import Select from '../components/ui/Select.jsx'
 import { ChartSkeleton, ErrorCard } from '../components/ui/LoadingSpinner.jsx'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -81,30 +82,6 @@ function EmptyChart({ message, height = 260 }) {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
-function Select({ label, value, onChange, disabled, children, minW = 'min-w-48' }) {
-  return (
-    <div className={clsx('flex flex-col gap-1.5', minW)}>
-      <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">{label}</label>
-      <div className="relative">
-        <select
-          className={clsx(
-            'w-full appearance-none bg-bg-card border border-border text-text-primary',
-            'rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:border-accent-blue',
-            'cursor-pointer transition-colors',
-            disabled && 'opacity-40 cursor-not-allowed',
-          )}
-          value={value ?? ''}
-          onChange={onChange}
-          disabled={disabled}
-        >
-          {children}
-        </select>
-        <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-      </div>
-    </div>
-  )
-}
-
 function SprintBadge({ state }) {
   const colors = {
     active: 'bg-accent-green/10 text-accent-green border-accent-green/20',

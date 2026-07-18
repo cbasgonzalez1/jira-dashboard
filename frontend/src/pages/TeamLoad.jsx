@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Users, AlertTriangle } from 'lucide-react'
 import { getTeam } from '../api/jiraApi.js'
@@ -27,7 +28,7 @@ function initials(name) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-function UserCard({ username, info, idx }) {
+function UserCard({ username, block, idx }) {
   if (username === '_unassigned') return null
   const avatarColor = AVATAR_COLORS[idx % AVATAR_COLORS.length]
 
@@ -35,16 +36,16 @@ function UserCard({ username, info, idx }) {
     <div className="card border border-border flex flex-col gap-3 hover:border-accent-blue/30 transition-colors">
       <div className="flex items-center gap-3">
         <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0', avatarColor)}>
-          {initials(info.display)}
+          {initials(block.display)}
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-text-primary truncate">{info.display}</div>
+          <div className="text-sm font-semibold text-text-primary truncate">{block.display}</div>
           <div className="text-xs text-text-muted truncate">{username}</div>
         </div>
-        {info.blocked > 0 && (
+        {block.blocked > 0 && (
           <span className="ml-auto flex items-center gap-1 text-xs text-accent-red bg-accent-red/10 border border-accent-red/20 rounded px-1.5 py-0.5">
             <AlertTriangle size={10} />
-            {info.blocked}
+            {block.blocked}
           </span>
         )}
       </div>
@@ -52,18 +53,18 @@ function UserCard({ username, info, idx }) {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-2">
         <div className="bg-bg-primary rounded-lg p-2 text-center">
-          <div className="text-lg font-bold text-accent-blue tabular-nums">{info.issues}</div>
+          <div className="text-lg font-bold text-accent-blue tabular-nums">{block.issues}</div>
           <div className="text-xs text-text-muted">Issues</div>
         </div>
         <div className="bg-bg-primary rounded-lg p-2 text-center">
-          <div className="text-lg font-bold text-accent-green tabular-nums">{info.story_points}</div>
-          <div className="text-xs text-text-muted">Puntos</div>
+          <div className="text-lg font-bold text-accent-green tabular-nums">{block.hours}h</div>
+          <div className="text-xs text-text-muted">Horas</div>
         </div>
       </div>
 
       {/* Type pills */}
       <div className="flex flex-wrap gap-1.5">
-        {Object.entries(info.by_type).map(([type, count]) => {
+        {Object.entries(block.by_type).map(([type, count]) => {
           const key = type.toLowerCase()
           const color = TYPE_PILL_COLORS[key] || 'bg-bg-primary text-text-secondary'
           return (
@@ -79,7 +80,7 @@ function UserCard({ username, info, idx }) {
         <div className="h-1 bg-bg-primary rounded-full overflow-hidden">
           <div
             className={clsx('h-full rounded-full', avatarColor)}
-            style={{ width: '100%', opacity: 0.3 + (info.issues / 20) * 0.7 }}
+            style={{ width: '100%', opacity: 0.3 + (block.issues / 20) * 0.7 }}
           />
         </div>
       </div>
@@ -87,8 +88,14 @@ function UserCard({ username, info, idx }) {
   )
 }
 
+const SCOPES = [
+  { key: 'sprint', label: 'Sprint actual' },
+  { key: 'backlog', label: 'Backlog total' },
+]
+
 export default function TeamLoad() {
   const { project } = useProject()
+  const [scope, setScope] = useState('sprint')
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['team', project],
@@ -99,18 +106,40 @@ export default function TeamLoad() {
   if (isError) return <ErrorCard message="Error al cargar datos del equipo." onRetry={refetch} />
 
   const users = data?.users ?? []
-  const assignedUsers = users.filter(([k]) => k !== '_unassigned')
-  const unassigned = users.find(([k]) => k === '_unassigned')?.[1]
-  const totalBlocked = users.reduce((s, [, info]) => s + info.blocked, 0)
+  // Project each person down to the selected scope's block — both blocks
+  // share the same shape (display, issues, hours, blocked, by_type).
+  const scopedUsers = users.map(([username, info]) => [username, info[scope]])
+  const assignedUsers = scopedUsers.filter(([k, block]) => k !== '_unassigned' && block.issues > 0)
+  const unassigned = scopedUsers.find(([k]) => k === '_unassigned')?.[1]
+  const totalBlocked = scopedUsers.reduce((s, [, block]) => s + block.blocked, 0)
+  const totalIssues = scope === 'backlog'
+    ? (data?.total_issues ?? 0)
+    : scopedUsers.reduce((s, [, block]) => s + block.issues, 0)
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Scope toggle */}
+      <div className="inline-flex rounded-lg border border-border bg-bg-card p-1">
+        {SCOPES.map(s => (
+          <button
+            key={s.key}
+            onClick={() => setScope(s.key)}
+            className={clsx(
+              'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+              scope === s.key ? 'bg-accent-blue text-white' : 'text-text-muted hover:text-text-primary',
+            )}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading ? Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />) : (
           <>
             <KPICard label="Miembros del equipo" value={assignedUsers.length}    icon={Users}         color="blue"   subtitle="con issues abiertos" />
-            <KPICard label="Issues totales"       value={data?.total_issues}      icon={Users}         color="green"  subtitle="abiertos en el equipo" />
+            <KPICard label="Issues totales"       value={totalIssues}             icon={Users}         color="green"  subtitle={scope === 'backlog' ? 'abiertos en el equipo' : 'en el sprint actual'} />
             <KPICard label="Sin asignar"          value={unassigned?.issues ?? 0} icon={AlertTriangle} color="yellow" subtitle="sin responsable" />
             <KPICard label="Bloqueados"           value={totalBlocked}            icon={AlertTriangle} color="red"    subtitle="issues bloqueados" />
           </>
@@ -146,8 +175,8 @@ export default function TeamLoad() {
               </div>
             ))
           ) : (
-            assignedUsers.map(([username, info], idx) => (
-              <UserCard key={username} username={username} info={info} idx={idx} />
+            assignedUsers.map(([username, block], idx) => (
+              <UserCard key={username} username={username} block={block} idx={idx} />
             ))
           )}
         </div>
@@ -162,7 +191,7 @@ export default function TeamLoad() {
               {unassigned.issues} issue{unassigned.issues > 1 ? 's' : ''} sin asignar
             </p>
             <p className="text-xs text-text-muted">
-              {unassigned.story_points} story points sin responsable — asígnalos en Jira para mejorar el seguimiento.
+              {unassigned.hours}h sin responsable — asígnalos en Jira para mejorar el seguimiento.
             </p>
           </div>
         </div>

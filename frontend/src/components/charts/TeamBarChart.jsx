@@ -23,8 +23,8 @@ function CustomTooltip({ active, payload, label }) {
     <div style={TOOLTIP_STYLE} className="p-3 shadow-xl">
       <p className="font-semibold text-text-primary mb-2">{label}</p>
       <p className="text-accent-blue">Issues: <strong>{d?.issues}</strong></p>
-      <p className="text-accent-green">Story Points: <strong>{d?.story_points}</strong></p>
-      {d?.blocked > 0 && <p className="text-accent-red">Blocked: <strong>{d.blocked}</strong></p>}
+      <p className="text-accent-green">Horas: <strong>{d?.hours}h</strong></p>
+      {d?.blocked > 0 && <p className="text-accent-red">Bloqueados: <strong>{d.blocked}</strong></p>}
     </div>
   )
 }
@@ -36,7 +36,7 @@ export default function TeamBarChart({ users = [] }) {
       name: info.display.split(' ')[0], // first name only for readability
       display: info.display,
       issues: info.issues,
-      story_points: info.story_points,
+      hours: info.hours,
       blocked: info.blocked,
       color: COLORS[i % COLORS.length],
     }))

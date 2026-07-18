@@ -19,8 +19,8 @@ function CustomTooltip({ active, payload, label }) {
   return (
     <div style={TOOLTIP_STYLE} className="p-3 shadow-xl">
       <p className="font-semibold text-text-primary mb-2">{label}</p>
-      <p className="text-accent-blue">Committed: <strong>{committed} pts</strong></p>
-      <p className="text-accent-green">Completed: <strong>{completed} pts</strong></p>
+      <p className="text-accent-blue">Committed: <strong>{committed}h</strong></p>
+      <p className="text-accent-green">Completed: <strong>{completed}h</strong></p>
       <p className="text-text-secondary mt-1">
         Completion: <strong className={pct >= 80 ? 'text-accent-green' : pct >= 60 ? 'text-accent-yellow' : 'text-accent-red'}>{pct}%</strong>
       </p>

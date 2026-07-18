@@ -7,8 +7,15 @@ const API = axios.create({
 
 export const getProjects       = ()                     => API.get('/api/projects')
 export const getOverview       = ()                     => API.get('/api/overview')
-export const getVelocity       = (project)              => API.get(`/api/velocity/${project}`)
-export const getBurndown       = (project)              => API.get(`/api/burndown/${project}`)
+export const getVelocity       = (project, boardId = null) =>
+  API.get(`/api/velocity/${project}`, { params: boardId ? { board_id: boardId } : undefined })
+export const getBurndown       = (project, boardId = null, sprintId = null) =>
+  API.get(`/api/burndown/${project}`, {
+    params: {
+      ...(boardId ? { board_id: boardId } : {}),
+      ...(sprintId ? { sprint_id: sprintId } : {}),
+    },
+  })
 export const getBacklog        = (project)              => API.get(`/api/backlog/${project}`)
 export const getTeam           = (project)              => API.get(`/api/team/${project}`)
 export const getSprintProjects = ()                     => API.get('/api/sprint-dashboard/projects')

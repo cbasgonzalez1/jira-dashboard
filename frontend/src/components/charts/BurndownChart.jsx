@@ -19,10 +19,10 @@ function CustomTooltip({ active, payload, label }) {
   return (
     <div style={TOOLTIP_STYLE} className="p-3 shadow-xl">
       <p className="font-semibold text-text-primary mb-2">{label}</p>
-      {ideal != null && <p className="text-text-secondary">Ideal: <strong>{ideal} pts</strong></p>}
+      {ideal != null && <p className="text-text-secondary">Ideal: <strong>{ideal}h</strong></p>}
       {actual != null && (
         <p className="text-accent-blue">
-          Actual: <strong>{actual} pts</strong>
+          Actual: <strong>{actual}h</strong>
           {ideal != null && actual > ideal && <span className="text-accent-red ml-1">(+{actual - ideal} behind)</span>}
           {ideal != null && actual < ideal && <span className="text-accent-green ml-1">({ideal - actual} ahead)</span>}
         </p>
